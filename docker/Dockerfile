@@ -48,7 +48,7 @@ RUN pip3 install --upgrade tensorflow-hub
 
 COPY datajoint_config.json /root/.datajoint_config.json
 COPY scripts/*.py /PosePipe/
-COPY demo /PosePipe/demo_det/
+# COPY demo /PosePipe/demo_det/
 
 # Creating directory for pose projects
 WORKDIR /

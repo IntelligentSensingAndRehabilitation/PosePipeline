@@ -94,8 +94,25 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
 
         dataset_name = 'coco'
 
-        pose_config_id = "rtmpose-l_8xb32-270e_coco-wholebody-384x288.py"
+        pose_config_id = "rtmpose-l_8xb32-270e_coco-wholebody-384x288"
         pose_checkpoint = "rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-384x288-eaeb96c8_20230125.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_ckpt = os.path.join(destination, pose_checkpoint)
+
+        num_keypoints = 133
+
+    elif method == 'RTMPose_Cocktail14':
+
+        pose_config_id = "rtmw-l_8xb320-270e_cocktail14-384x288"
+        pose_checkpoint = "rtmw-dw-x-l_simcc-cocktail14_270e-384x288-20231122.pth"
 
         # define the destination folder
         destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")

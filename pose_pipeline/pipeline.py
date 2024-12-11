@@ -1010,6 +1010,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 13, "top_down_method_name": "Bridging_smpl+head_30"},
         {"top_down_method": 14, "top_down_method_name": "Bridging_smplx_42"},
         {"top_down_method": 15, "top_down_method_name": "MMPose_RTMPose_Coco_Wholebody"},
+        {"top_down_method": 16, "top_down_method_name": "MMPose_RTMPose_Cocktail14"},
     ]
 
 
@@ -1098,6 +1099,9 @@ class TopDownPerson(dj.Computed):
         elif method_name == "MMPose_RTMPose_Coco_Wholebody":
             from .wrappers.mmpose import mmpose_top_down_person
             key["keypoints"] = mmpose_top_down_person(key, "RTMPose_coco-wholebody")
+        elif method_name == "MMPose_RTMPose_Cocktail14":
+            from .wrappers.mmpose import mmpose_top_down_person
+            key["keypoints"] = mmpose_top_down_person(key, "RTMPose_Cocktail14")
         elif method_name == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
