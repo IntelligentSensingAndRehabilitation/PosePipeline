@@ -54,46 +54,9 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
         pose_cfg = os.path.join(MODEL_DATA_DIR, "mmpose/config/halpe/hrnet_w48_halpe_384x288_dark_plus.py")
         pose_ckpt = os.path.join(MODEL_DATA_DIR, 'mmpose/checkpoints/hrnet_w48_halpe_384x288_dark_plus-d13c2588_20211021.pth')
         num_keypoints = 136
-    # elif method == 'RTMPose_Hand5_HALPE':
-
-    #     # Define the model config id and checkpoints
-    #     pose_config_id = "rtmpose-m_8xb256-210e_hand5-256x256"
-    #     pose_checkpoint = "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth"
-
-    #     # define the destination folder
-    #     destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
-
-    #     # download the model and checkpoints
-    #     download(package, [pose_config_id], dest_root=destination)
-
-    #     # define the model config and checkpoints paths
-    #     pose_cfg = os.path.join(destination, f"{pose_config_id}.py")
-    #     pose_ckpt = os.path.join(destination, pose_checkpoint)
-
-    #     # # register all modules from mmdet
-    #     # register_all_modules()
-
-    #     num_keypoints = 136
-    # elif method == 'freihand2d':
-
-    #     pose_config_id = "td-hm_res50_8xb64-100e_freihand2d-224x224"
-    #     pose_checkpoint = "res50_freihand_224x224-ff0799bc_20200914.pth"
-
-    #     # define the destination folder
-    #     destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
-
-    #     # download the model and checkpoints
-    #     download(package, [pose_config_id], dest_root=destination)
-
-    #     # define the model config and checkpoints paths
-    #     pose_cfg = os.path.join(destination, f"{pose_config_id}.py")
-    #     pose_ckpt = os.path.join(destination, pose_checkpoint)
-
-    #     num_keypoints = 21
     elif method == 'RTMPose_coco-wholebody':
 
-        dataset_name = 'coco'
-
+        # Define the model config and checkpoint files
         pose_config_id = "rtmpose-l_8xb32-270e_coco-wholebody-384x288"
         pose_checkpoint = "rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-384x288-eaeb96c8_20230125.pth"
 
@@ -111,6 +74,7 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
 
     elif method == 'RTMPose_Cocktail14':
 
+        # Define the model config and checkpoint files
         pose_config_id = "rtmw-l_8xb320-270e_cocktail14-384x288"
         pose_checkpoint = "rtmw-dw-x-l_simcc-cocktail14_270e-384x288-20231122.pth"
 
