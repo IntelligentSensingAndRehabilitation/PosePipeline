@@ -41,8 +41,9 @@ def get_model():
     if get_model.model is None:
         # model_path = os.path.join(MODEL_DATA_DIR, "bridging_formats")
         # model = hub.load(model_path)
+        print("Loading MeTRAbs Model...")
         model = hub.load('https://bit.ly/metrabs_l')  # Takes about 3 minutes
-
+        print("MeTRAbs Model Loaded")
         model.per_skeleton_joint_names = {k: v.numpy() for k, v in model.per_skeleton_joint_names.items()}
         model.per_skeleton_indices = {k: v.numpy() for k, v in model.per_skeleton_indices.items()}
 
