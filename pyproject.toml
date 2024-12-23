@@ -18,7 +18,8 @@ dependencies = [
     "tensorflow[and-cuda]>=2.14.0",
     "tensorflow-hub",
     "tf-keras>=2.18.0",
-    "pycocotools==2.0.8"
+    "pycocotools==2.0.8",
+    "openmim"
 ]
 
 [project.optional-dependencies]

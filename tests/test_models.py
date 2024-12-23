@@ -7,3 +7,7 @@ def test_load_metrabs():
     model = get_model()
 
     assert model is not None, "Model not loaded correctly"
+
+def test_load_mmpose():
+    from mmpose.apis import init_model as init_pose_estimator
+    from mmpose.apis import inference_topdown
