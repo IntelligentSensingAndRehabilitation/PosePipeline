@@ -107,7 +107,7 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
 
         # handle the case where person is not tracked in frame
         if np.any(np.isnan(bbox)):
-            results.append(np.zeros((num_keypoints, 3)))
+            results.append(np.zeros((num_keypoints, 2)))
             continue
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
