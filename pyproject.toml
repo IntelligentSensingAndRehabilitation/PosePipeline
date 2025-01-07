@@ -7,9 +7,9 @@ requires-python = "~=3.11"
 dependencies = [
     "datajoint>=0.14.2",
     "opencv-python==4.9.0.80",
-    "torch",
-    "torchvision",
-    "torchaudio",
+    "torch>=2.0.1",
+    "torchvision>=0.15.2",
+    "torchaudio>=2.0.2",
     "opencv-contrib-python==4.9.0.80",
     "matplotlib>=3.9.2",
     "numpy>1.24",
@@ -19,7 +19,7 @@ dependencies = [
     "tensorflow-hub",
     "tf-keras>=2.18.0",
     "pycocotools==2.0.8",
-    "openmim"
+    "openmim==0.3.9"
 ]
 
 [project.optional-dependencies]
