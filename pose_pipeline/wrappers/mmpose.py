@@ -26,6 +26,14 @@ mmpose_joint_dictionary = {
                    "Left Hip", "Right Hip", "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"]
 }
 
+def normalize_scores(scores):
+    max_score = np.max(scores)
+
+    if max_score == 0:
+        return scores
+    
+    return scores / max_score
+
 def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
 
     from mmpose.apis import init_model as init_pose_estimator
@@ -90,7 +98,7 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
 
         num_keypoints = 133
     
-        
+    print(f"processing {key}")
     bboxes = (PersonBbox & key).fetch1("bbox")
     video =  Video.get_robust_reader(key, return_cap=False) # returning video allows deleting it
     cap = cv2.VideoCapture(video)
@@ -98,6 +106,8 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
     model = init_pose_estimator(pose_cfg, pose_ckpt)
 
     results = []
+    scores = []
+    visibility = []
 
     for bbox in tqdm(bboxes):
 
@@ -108,6 +118,8 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
         # handle the case where person is not tracked in frame
         if np.any(np.isnan(bbox)):
             results.append(np.zeros((num_keypoints, 2)))
+            scores.append(np.zeros(num_keypoints))
+            visibility.append(np.zeros(num_keypoints))
             continue
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -115,12 +127,31 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
         res = inference_topdown(model, frame, np.array(bbox)[None],'xywh')[0]
 
         keypoints = res.pred_instances.keypoints[0]
+        keypoint_confidences = res.pred_instances.keypoint_scores[0]
+        keypoint_visibility = res.pred_instances.keypoints_visible[0]
+
         results.append(keypoints)
+        scores.append(keypoint_confidences)
+        visibility.append(keypoint_visibility)
+
+    # Convert results to a numpy array
+    results = np.asarray(results)
+
+    # Convert scores to a numpy array
+    scores = np.asarray(scores)
+    # Normalize the score by dividing by the maximum score
+    norm_scores = normalize_scores(scores)
+
+    # Convert visibility to a numpy array
+    visibility = np.asarray(visibility)
+
+    # Add the normalized scores to the results
+    results = np.concatenate([results, norm_scores[..., None]], axis=-1)
 
     cap.release()
     os.remove(video)
 
-    return np.asarray(results)
+    return results, scores, visibility
 
 
 def mmpose_bottom_up(key):

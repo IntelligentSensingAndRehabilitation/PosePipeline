@@ -1030,7 +1030,17 @@ class TopDownPerson(dj.Computed):
     keypoints          : longblob
     """
 
+    # class MMPoseRawMetrics(dj.Part):
+    #     definition = """
+    #     -> TopDownPerson
+    #     ---
+    #     keypoint_scores : longblob
+    #     keypoints_visibile : longblob
+    #     """
+
     def make(self, key):
+
+        raw_metrics = None
 
         method_name = (TopDownMethodLookup & key).fetch1("top_down_method_name")
         if method_name == "MMPose":
@@ -1101,7 +1111,13 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = mmpose_top_down_person(key, "RTMPose_coco-wholebody")
         elif method_name == "MMPose_RTMPose_Cocktail14":
             from .wrappers.mmpose import mmpose_top_down_person
-            key["keypoints"] = mmpose_top_down_person(key, "RTMPose_Cocktail14")
+
+            part_key = key.copy()
+            results, scores, visibility = mmpose_top_down_person(key, "RTMPose_Cocktail14")
+
+            key["keypoints"] = results
+            part_key["keypoint_scores"] = scores
+            part_key["keypoints_visibile"] = visibility
         elif method_name == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
@@ -1116,6 +1132,9 @@ class TopDownPerson(dj.Computed):
 
         self.insert1(key)
 
+        # if raw_metrics is not None:
+        #     self.MMPoseRawMetrics.insert1(part_key)
+
     @staticmethod
     def joint_names(method="MMPose"):
         if method == "OpenPose":
@@ -1128,6 +1147,11 @@ class TopDownPerson(dj.Computed):
             from pose_pipeline.wrappers.bridging import normalized_joint_name_dictionary
 
             return normalized_joint_name_dictionary["bml_movi_87"]
+
+        elif method == "MMPose_RTMPose_Cocktail14":
+            from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
+
+            return mmpose_joint_dictionary["MMPoseWholebody"]
 
         elif method == "OpenPose_BODY25B" or method == "OpenPose_HR" or method == "OpenPose_LR":
             return [
