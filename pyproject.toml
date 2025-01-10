@@ -3,13 +3,13 @@ name = "pose_pipeline"
 version = "0.1.0"
 description = "Video pose analysis pipelines for DataJoint."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = "~=3.11"
 dependencies = [
     "datajoint>=0.14.2",
     "opencv-python==4.9.0.80",
-    "torch==2.0.1",
-    "torchvision==0.15.2",
-    "torchaudio==2.0.2",
+    "torch>=2.0.1",
+    "torchvision>=0.15.2",
+    "torchaudio>=2.0.2",
     "opencv-contrib-python==4.9.0.80",
     "matplotlib>=3.9.2",
     "numpy>1.24",
@@ -20,15 +20,13 @@ dependencies = [
     "tf-keras>=2.18.0",
     "pycocotools==2.0.8",
     "openmim==0.3.9",
-    "pytest",
-    "ipywidgets",
-    "ipympl",
-    "motmetrics"
+    "motmetrics>=1.4.0"
 ]
 
 [project.optional-dependencies]
 build = ["setuptools>70", "pip>22"]
 compile = ["chumpy>0.4"]
+dev = ["pytest","ipython","ipywidgets","ipympl","seaborn"]
 
 [tool.uv]
 no-build-isolation-package = ["chumpy"]
