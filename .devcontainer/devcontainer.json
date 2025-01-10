@@ -2,21 +2,21 @@
   "name": "PosePipe Dev Container",
   "dockerComposeFile": ["docker-compose.yaml"],
   "service": "posepipe", 
-  "features": {
-        "ghcr.io/devcontainers/features/common-utils:2":{
-            "installZsh": "true",
-            "username": "vscode",
-            "userUid": "1000",
-            "userGid": "1000",
-            "upgradePackages": "true"
-        }
-    },
+  // "features": {
+  //       "ghcr.io/devcontainers/features/common-utils:2":{
+  //           "installZsh": "true",
+  //           "username": "vscode",
+  //           "userUid": "1000",
+  //           "userGid": "1000",
+  //           "upgradePackages": "true"
+  //       }
+  //   },
   "workspaceFolder": "/PosePipe",
   "forwardPorts": [3306],
-  "postCreateCommand": "pip install ipykernel && sudo ln -s /usr/bin/python3 /usr/bin/python",
+  "postCreateCommand": "pip install ipykernel",
   "customizations": {
     "settings": {
-      "python.defaultInterpreterPath": "/usr/bin/python3"
+      "python.pythonPath": "/usr/local/bin/python"
     },
     "vscode": {
       "extensions": [
@@ -24,6 +24,6 @@
         "ms-toolsai.jupyter"
       ]
     }
-  },
-  "remoteUser": "vscode"
+  }
+  // "remoteUser": "vscode"
 }
