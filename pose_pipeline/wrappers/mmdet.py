@@ -85,7 +85,7 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
     #     model = mmdet.apis.init_detector(config=model_config, checkpoint=detector_checkpoint, device="cpu")
     #     model.cfg = adapt_mmdet_pipeline(model.cfg)
     # else:
-    model = mmdet.apis.init_track_model(config=model_config, detector=detector_checkpoint, reid=reid_checkpoint, device="cpu")
+    model = mmdet.apis.init_track_model(config=model_config, detector=detector_checkpoint, reid=reid_checkpoint)
 
     cap = cv2.VideoCapture(file_path)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -113,7 +113,7 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
         result = mmdet.apis.inference_mot(model=model, img=frame, frame_id=frame_id, video_len=video_length)
 
         # MMDet uses a custom data structure to store the results
-        bboxes = result.video_data_samples[0].pred_track_instances.bboxes.numpy()
+        bboxes = result.video_data_samples[0].pred_track_instances.bboxes.cpu().numpy()
         track_ids = result.video_data_samples[0].pred_track_instances.instances_id
         confidences = result.video_data_samples[0].pred_track_instances.scores
 
