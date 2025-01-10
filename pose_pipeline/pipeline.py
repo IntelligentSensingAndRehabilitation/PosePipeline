@@ -1030,17 +1030,18 @@ class TopDownPerson(dj.Computed):
     keypoints          : longblob
     """
 
-    # class MMPoseRawMetrics(dj.Part):
-    #     definition = """
-    #     -> TopDownPerson
-    #     ---
-    #     keypoint_scores : longblob
-    #     keypoints_visibile : longblob
-    #     """
+    class MMPoseRawMetrics(dj.Part):
+        definition = """
+        -> TopDownPerson
+        ---
+        keypoint_scores : longblob
+        keypoints_visibile : longblob
+        """
 
     def make(self, key):
 
-        raw_metrics = None
+        scores = None
+        visibility = None
 
         method_name = (TopDownMethodLookup & key).fetch1("top_down_method_name")
         if method_name == "MMPose":
@@ -1114,7 +1115,6 @@ class TopDownPerson(dj.Computed):
 
             part_key = key.copy()
             results, scores, visibility = mmpose_top_down_person(key, "RTMPose_Cocktail14")
-
             key["keypoints"] = results
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
@@ -1132,8 +1132,9 @@ class TopDownPerson(dj.Computed):
 
         self.insert1(key)
 
-        # if raw_metrics is not None:
-        #     self.MMPoseRawMetrics.insert1(part_key)
+        if scores is not None and visibility is not None:
+            print("Inserting raw metrics")
+            self.MMPoseRawMetrics.insert1(part_key)
 
     @staticmethod
     def joint_names(method="MMPose"):
