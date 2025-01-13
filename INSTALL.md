@@ -27,13 +27,8 @@ dj.config['stores'] = {
 }
 ```
 
-4. Set the environment variables found in `pose_pipeline.env` based on the local installation. Follow the specific 
-   installations instructions for each one and also store the necessary network weights in the 3rdparty directory.
+4. To use `OpenMMLab` packages, the following additional step is required. Note: this assume `uv` is being used as the package manager.
 
-MMPose files:
 ```
-3rdparty/mmpose/checkpoints/hrnet_w48_coco_wholebody_384x288_dark-f5726563_20200918.pth
-3rdparty/mmpose/checkpoints/hrnet_w48_coco_384x288_dark-e881a4b6_20210203.pth
-3rdparty/mmpose/checkpoints/higher_hrnet48_coco_512x512-60fedcbc_20200712.pth
-3rdparty/mmpose/checkpoints/res50_coco_640x640-2046f9cb_20200822.pth
+uv run bash scripts/mmlab_install.sh
 ```

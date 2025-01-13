@@ -1,6 +1,6 @@
 [project]
 name = "pose_pipeline"
-version = "0.1.0"
+version = "2024.01.14"
 description = "Video pose analysis pipelines for DataJoint."
 readme = "README.md"
 requires-python = "~=3.11"
