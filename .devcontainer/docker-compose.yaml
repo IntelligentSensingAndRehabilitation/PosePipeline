@@ -6,12 +6,19 @@ services:
       context: ..
       dockerfile: ./docker/Dockerfile
     image: posepipe_dev
-    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 6
+            capabilities: [gpu]
     env_file:
       - ../.env
     volumes:
-      - ..:/workspace
+      - ..:/PosePipe
       - '/datajoint_external:/datajoint_external'
+      - ~/test_videos:/videos
 
   # This service starts the datajoint database image
   db:

@@ -8,6 +8,7 @@ from pose_pipeline import MODEL_DATA_DIR
 import tensorflow as tf
 import tensorflow_hub as hub
 
+os.environ["TFHUB_CACHE_DIR"] = "/home/isr/app/.cache/tfhub_modules"
 
 # supported formats are
 # 'smpl_24', 'h36m_17', 'h36m_25', 'mpi_inf_3dhp_17', 'mpi_inf_3dhp_28', 'coco_19', 'sailvos_26', 'gpa_34', 'aspset_17',
@@ -39,10 +40,13 @@ def make_coco_25(model):
 def get_model():
     # doing this here to only load model once, since this takes quite a while
     if get_model.model is None:
-        model_path = os.path.join(MODEL_DATA_DIR, "bridging_formats")
-        model = hub.load(model_path)
-        # get_model.model = hub.load('https://bit.ly/metrabs_l')  # Takes about 3 minutes
-
+        # model_path = os.path.join(MODEL_DATA_DIR, "bridging_formats")
+        # model = hub.load(model_path)
+        print("Loading MeTRAbs Model...")
+        model_cache = os.environ.get("TFHUB_CACHE_DIR")
+        print(f"Model cached in: {model_cache}")
+        model = hub.load('https://bit.ly/metrabs_l')  # Takes about 3 minutes
+        print("MeTRAbs Model Loaded")
         model.per_skeleton_joint_names = {k: v.numpy() for k, v in model.per_skeleton_joint_names.items()}
         model.per_skeleton_indices = {k: v.numpy() for k, v in model.per_skeleton_indices.items()}
 
@@ -107,7 +111,6 @@ def bridging_formats_bottom_up(key, model=None, skeleton=""):
     if model is None:
         model = get_model()
 
-    from mmpose.apis import init_pose_model, inference_bottom_up_pose_model
     from tqdm import tqdm
 
     video = Video.get_robust_reader(key, return_cap=False)

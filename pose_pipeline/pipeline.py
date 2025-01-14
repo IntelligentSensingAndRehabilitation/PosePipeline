@@ -491,6 +491,8 @@ class TrackingBboxMethodLookup(dj.Lookup):
         {"tracking_method": 5, "tracking_method_name": "MMTrack_deepsort"},
         {"tracking_method": 6, "tracking_method_name": "MMTrack_bytetrack"},
         {"tracking_method": 7, "tracking_method_name": "MMTrack_qdtrack"},
+        {"tracking_method": 8, "tracking_method_name": "MMDet_deepsort"},
+        {"tracking_method": 9, "tracking_method_name": "MMDet_qdtrack"},
     ]
 
 
@@ -532,6 +534,18 @@ class TrackingBbox(dj.Computed):
             from pose_pipeline.wrappers.mmtrack import mmtrack_bounding_boxes
 
             tracks = mmtrack_bounding_boxes(video, "deepsort")
+            key["tracks"] = tracks
+
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMDet_deepsort":
+            from pose_pipeline.wrappers.mmdet import mmdet_bounding_boxes
+
+            tracks = mmdet_bounding_boxes(video, "deepsort")
+            key["tracks"] = tracks
+
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMDet_qdtrack":
+            from pose_pipeline.wrappers.mmdet import mmdet_bounding_boxes
+
+            tracks = mmdet_bounding_boxes(video, "qdtrack")
             key["tracks"] = tracks
 
         elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMTrack_bytetrack":
@@ -995,6 +1009,8 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 12, "top_down_method_name": "Bridging_bml_movi_87"},
         {"top_down_method": 13, "top_down_method_name": "Bridging_smpl+head_30"},
         {"top_down_method": 14, "top_down_method_name": "Bridging_smplx_42"},
+        {"top_down_method": 15, "top_down_method_name": "MMPose_RTMPose_Coco_Wholebody"},
+        {"top_down_method": 16, "top_down_method_name": "MMPose_RTMPose_Cocktail14"},
     ]
 
 
@@ -1014,7 +1030,18 @@ class TopDownPerson(dj.Computed):
     keypoints          : longblob
     """
 
+    class MMPoseRawMetrics(dj.Part):
+        definition = """
+        -> TopDownPerson
+        ---
+        keypoint_scores : longblob
+        keypoints_visibile : longblob
+        """
+
     def make(self, key):
+
+        scores = None
+        visibility = None
 
         method_name = (TopDownMethodLookup & key).fetch1("top_down_method_name")
         if method_name == "MMPose":
@@ -1080,6 +1107,17 @@ class TopDownPerson(dj.Computed):
             # Filter out keypoints that are outside of the image since confidence estimates do
             # not capture this
             key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+        elif method_name == "MMPose_RTMPose_Coco_Wholebody":
+            from .wrappers.mmpose import mmpose_top_down_person
+            key["keypoints"] = mmpose_top_down_person(key, "RTMPose_coco-wholebody")
+        elif method_name == "MMPose_RTMPose_Cocktail14":
+            from .wrappers.mmpose import mmpose_top_down_person
+
+            part_key = key.copy()
+            results, scores, visibility = mmpose_top_down_person(key, "RTMPose_Cocktail14")
+            key["keypoints"] = results
+            part_key["keypoint_scores"] = scores
+            part_key["keypoints_visibile"] = visibility
         elif method_name == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
@@ -1094,6 +1132,10 @@ class TopDownPerson(dj.Computed):
 
         self.insert1(key)
 
+        if scores is not None and visibility is not None:
+            print("Inserting raw metrics")
+            self.MMPoseRawMetrics.insert1(part_key)
+
     @staticmethod
     def joint_names(method="MMPose"):
         if method == "OpenPose":
@@ -1106,6 +1148,11 @@ class TopDownPerson(dj.Computed):
             from pose_pipeline.wrappers.bridging import normalized_joint_name_dictionary
 
             return normalized_joint_name_dictionary["bml_movi_87"]
+
+        elif method == "MMPose_RTMPose_Cocktail14":
+            from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
+
+            return mmpose_joint_dictionary["MMPoseWholebody"]
 
         elif method == "OpenPose_BODY25B" or method == "OpenPose_HR" or method == "OpenPose_LR":
             return [

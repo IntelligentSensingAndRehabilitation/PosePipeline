@@ -1,4 +1,5 @@
 /datajoint_docker/data
+.devcontainer/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
