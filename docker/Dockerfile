@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
 #get deps
 RUN apt-get update && \
@@ -7,6 +7,9 @@ RUN apt-get update && \
     libgoogle-glog-dev libboost-all-dev libhdf5-dev libatlas-base-dev \
     python3-setuptools vim libgtk2.0-dev libgtk-3-dev build-essential cmake mysql-client \
     ffmpeg
+
+# upgrade pip
+RUN pip3 install --upgrade pip
 
 # # First install pytorch
 # RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
