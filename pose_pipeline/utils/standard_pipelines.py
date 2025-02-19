@@ -109,9 +109,9 @@ def top_down_pipeline(
 
 def lifting_pipeline(
     key,
-    tracking_method_name: str = "DeepSortYOLOv4",
-    top_down_method_name: str = "MMpose",
-    lifting_method_name: str = "GastNet",
+    tracking_method_name: str = "MMDet_deepsort",
+    top_down_method_name: str = "Bridging_bml_movi_87",
+    lifting_method_name: str = "Bridging_bml_movi_87",
     reserve_jobs: bool = False,
 ):
     """
