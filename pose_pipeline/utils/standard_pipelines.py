@@ -9,7 +9,7 @@ def find_lifting_keys(filt=None):
 
 def tracking_pipeline(
     keys: Union[Dict, List[Dict]],
-    tracking_method_name: str = "DeepSortYOLOv4",
+    tracking_method_name: str = "MMDet_deepsort",
     reserve_jobs: bool = False,
 ):
     """
@@ -55,7 +55,7 @@ def tracking_pipeline(
 
 def top_down_pipeline(
     key: Union[Dict, List[Dict]],
-    tracking_method_name: str = "DeepSortYOLOv4",
+    tracking_method_name: str = "MMDet_deepsort",
     top_down_method_name: str = "MMpose",
     reserve_jobs: bool = False,
 ):
