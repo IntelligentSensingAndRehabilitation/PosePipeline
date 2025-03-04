@@ -12,9 +12,8 @@ dependencies = [
     "torchaudio>=2.0.2",
     "opencv-contrib-python==4.9.0.80",
     "matplotlib>=3.9.2",
-    "numpy>1.24",
+    "numpy>1.24,<2.0.0", # tensorflow, jax and opencv are built with numpy < 2.0.0
     "pyrender>=0.1.45",
-    "numpy<2.0.0",    # tensorflow needs this for some reason otherwise it will fail silently
     "tensorflow[and-cuda]>=2.14.0",
     "tensorflow-hub",
     "tf-keras>=2.18.0",
