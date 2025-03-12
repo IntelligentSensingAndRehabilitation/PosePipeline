@@ -120,6 +120,24 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
         pose_ckpt = os.path.join(destination, pose_checkpoint)
 
         num_keypoints = 133
+
+    elif method == 'MMPose_VitPose_H':
+
+        # Define the model config and checkpoint files
+        pose_config_id = "td-hm_ViTPose-huge_8xb64-210e_coco-256x192"
+        pose_checkpoint = "td-hm_ViTPose-huge_8xb64-210e_coco-256x192-e32adcd4_20230314.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_ckpt = os.path.join(destination, pose_checkpoint)
+
+        num_keypoints = 17
     
     print(f"processing {key}")
     bboxes = (PersonBbox & key).fetch1("bbox")
