@@ -8,8 +8,6 @@ from pose_pipeline import MODEL_DATA_DIR
 import tensorflow as tf
 import tensorflow_hub as hub
 
-os.environ["TFHUB_CACHE_DIR"] = "/home/isr/app/.cache/tfhub_modules"
-
 # supported formats are
 # 'smpl_24', 'h36m_17', 'h36m_25', 'mpi_inf_3dhp_17', 'mpi_inf_3dhp_28', 'coco_19', 'sailvos_26', 'gpa_34', 'aspset_17',
 # 'bml_movi_87', 'mads_19', 'berkeley_mhad_43', 'total_capture_21', 'jta_22', 'ikea_asm_17', 'human4d_32', 'smplx_42',
