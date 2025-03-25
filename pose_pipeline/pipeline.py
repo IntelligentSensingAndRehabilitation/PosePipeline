@@ -1012,7 +1012,6 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 15, "top_down_method_name": "MMPose_RTMPose_Coco_Wholebody"},
         {"top_down_method": 16, "top_down_method_name": "MMPose_RTMPose_Cocktail14"},
         {"top_down_method": 17, "top_down_method_name": "MMPose_VitPose_H"},
-        {"top_down_method": 18, "top_down_method_name": "MMPose_HRNet_W48_COCO"},
     ]
 
 
