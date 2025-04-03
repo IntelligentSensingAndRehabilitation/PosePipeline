@@ -2043,6 +2043,8 @@ class HandBboxMethodLookup(dj.Lookup):
     contents = [
         {"detection_method": 0, "detection_method_name": "RTMDet"},
         {"detection_method": 1, "detection_method_name": "TopDown"},
+        {"detection_method": 2, "detection_method_name": "3Dto2D"},
+        {"detection_method": 3, "detection_method_name": "MoviTopDown"},
         
     ]
 
@@ -2079,10 +2081,36 @@ class HandBbox(dj.Computed):
                 raise Exception("TopDownPerson table does not have the required keypoints")
             bboxes = make_bbox_from_keypoints(keypoints)
             key["bboxes"] = bboxes
-            key["num_boxes"] = 2 
+            key["num_boxes"] = num_boxes
+        elif (HandBboxMethodLookup & key).fetch1("detection_method_name") == "3Dto2D":
+            #Using 3Dto2D table keypoints for HALPE to create right and left hand bboxes 
+            #Requires installation of multi_camera library.
+            from multi_camera.analysis.camera import robust_triangulate_points,project_distortion
+            from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
+            from multi_camera.datajoint.sessions import Recording
+            keypoints, camera_name = (SingleCameraVideo * MultiCameraRecording * TopDownPerson & (Recording & key) & "top_down_method=2").fetch("keypoints", "camera_name")
+            calibration_key = (CalibratedRecording & key).fetch1("KEY")
+            camera_calibration, camera_names = (Calibration & calibration_key).fetch1("camera_calibration", "camera_names")
+            
+            
+            order = [list(camera_name).index(c) for c in camera_names]
+            points2d = np.stack([keypoints[o][:, -42:, :] for o in order], axis=0)
+ 
+            camera_num = list(camera_name).index((SingleCameraVideo & key).fetch1("camera_name"))
+            points3d, _ = robust_triangulate_points(camera_calibration, points2d, return_weights=True)
+            kp2d_proj = np.array([project_distortion(camera_calibration, i, points3d) for i in range(camera_calibration["mtx"].shape[0])])
+            num_boxes, bboxes = make_bbox_from_keypoints(kp2d_proj[camera_num])
+            key["bboxes"] = bboxes
+            key["num_boxes"] = num_boxes
+
+        elif (HandBboxMethodLookup & key).fetch1("detection_method_name") == "MoviTopDown":
+            from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
+            keypoints = (TopDownPerson & key & "top_down_method=12").fetch1("keypoints")
+            num_boxes, bboxes = make_bbox_from_keypoints(keypoints, method='movi', width = 160, height = 160,)
+            key["bboxes"] = bboxes
+            key["num_boxes"] = num_boxes
         else:
             raise Exception(f"Method not implemented")
-
         self.insert1(key)
 
 @schema
@@ -2094,13 +2122,13 @@ class HandPoseEstimationMethodLookup(dj.Lookup):
     """
     contents = [
         {"estimation_method": -1, "estimation_method_name": "Halpe"},
-        {"estimation_method": 0, "estimation_method_name": "RTMPoseHand5"},
-        {"estimation_method": 1, "estimation_method_name": "RTMPoseCOCO"},
-        {"estimation_method": 2, "estimation_method_name": "freihand"},
-        {"estimation_method": 3, "estimation_method_name": "HRNet_dark"},
-        {"estimation_method": 4, "estimation_method_name": "HRNet_udp"},
-    ]
-
+        {"estimation_method": 0,  "estimation_method_name": "RTMPoseHand5"},
+        {"estimation_method": 1,  "estimation_method_name": "RTMPoseCOCO"},
+        {"estimation_method": 2,  "estimation_method_name": "freihand"},
+        {"estimation_method": 3,  "estimation_method_name": "HRNet_dark"},
+        {"estimation_method": 4,  "estimation_method_name": "HRNet_udp"},
+        ]
+    
     def joint_names(self):
         method = self.fetch1("estimation_method_name")
         if (
@@ -2158,8 +2186,16 @@ class HandPoseEstimationMethodLookup(dj.Lookup):
                 "PIP5",
                 "MCP5",
             ]
+        elif method == "bimanual":
+            return ['Wrist','CMC1','MCP1','IP1','TIP1','MCP2','PIP2',
+        'DIP2', 'TIP2', 'MCP3', 'PIP3', 'DIP3','TIP3', 'MCP4',
+        'PIP4', 'DIP4', 'TIP4', 'MCP5', 'PIP5','DIP5', 'TIP5',
+        'Wrist_l', 'CMC1_l', 'MCP1_l', 'IP1_l', 'TIP1_l', 'MCP2_l', 'PIP2_l',
+        'DIP2_l', 'TIP2_l', 'MCP3_l', 'PIP3_l', 'DIP3_l', 'TIP3_l', 'MCP4_l',
+        'PIP4_l', 'DIP4_l', 'TIP4_l', 'MCP5_l', 'PIP5_l', 'DIP5_l', 'TIP5_l'
+        ]
 
-
+            
 @schema
 class HandPoseEstimationMethod(dj.Manual):
     definition = """
