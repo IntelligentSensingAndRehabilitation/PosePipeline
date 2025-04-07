@@ -2079,7 +2079,7 @@ class HandBbox(dj.Computed):
                 keypoints = (TopDownPerson & key & "top_down_method=2").fetch1("keypoints")
             except:
                 raise Exception("TopDownPerson table does not have the required keypoints")
-            bboxes = make_bbox_from_keypoints(keypoints)
+            num_boxes, bboxes = make_bbox_from_keypoints(keypoints)
             key["bboxes"] = bboxes
             key["num_boxes"] = num_boxes
         elif (HandBboxMethodLookup & key).fetch1("detection_method_name") == "3Dto2D":
