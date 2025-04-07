@@ -4,6 +4,9 @@ import numpy as np
 import datajoint as dj
 from pose_pipeline import Video
 
+from mim import download
+
+package = 'mmdet'
 
 def mmpose_hand_det(key, method='RTMDet'):
 
@@ -129,4 +132,4 @@ def make_bbox_from_keypoints(
 
         bboxes.append([right_hand_bboxes,left_hand_bboxes])
 
-    return bboxes
+    return 2, bboxes
