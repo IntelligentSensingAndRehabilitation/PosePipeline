@@ -5,7 +5,9 @@ import datajoint as dj
 from pose_pipeline import Video
 from pose_pipeline.pipeline import HandBbox
 from tqdm import tqdm
+from mim import download 
 
+package = 'mmpose'
 
 def mmpose_HPE(key, method="RTMPoseHand5"):
 
@@ -15,31 +17,78 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
     from mmpose.evaluation.functional import nms
 
     if method == "RTMPoseHand5":
-        pose_model_cfg = os.path.join(MODEL_DATA_DIR,"mmpose/config/hand_2d_keypoint/rtmpose/hand5/rtmpose-m_8xb256-210e_hand5-256x256.py")
-        pose_model_ckpt = "https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth"
+        # Define the model config and checkpoint files
+        pose_config_id = "rtmpose-m_8xb256-210e_hand5-256x256"
+        pose_checkpoint = "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_model_ckpt = os.path.join(destination, pose_checkpoint)
+        
     elif method == "RTMPoseCOCO":
-        pose_model_cfg = os.path.join(
-            MODEL_DATA_DIR,"mmpose/config/hand_2d_keypoint/rtmpose/coco_wholebody_hand/rtmpose-m_8xb32-210e_coco-wholebody-hand-256x256.py",
-        )
-        pose_model_ckpt = "https://download.openmmlab.com/mmpose/v1/projects/rtmposev1/rtmpose-m_simcc-coco-wholebody-hand_pt-aic-coco_210e-256x256-99477206_20230228.pth"
+        # Define the model config and checkpoint files
+        pose_config_id = "rtmpose-m_8xb32-210e_coco-wholebody-hand-256x256"
+        pose_checkpoint = "rtmpose-m_simcc-coco-wholebody-hand_pt-aic-coco_210e-256x256-99477206_20230228.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_model_ckpt = os.path.join(destination, pose_checkpoint)
     elif method == "freihand":
-        pose_model_cfg = os.path.join(
-            MODEL_DATA_DIR,
-            "mmpose/config/hand_2d_keypoint/topdown_heatmap/freihand2d/td-hm_res50_8xb64-100e_freihand2d-224x224.py",
-        )
-        pose_model_ckpt = "https://download.openmmlab.com/mmpose/hand/resnet/res50_freihand_224x224-ff0799bc_20200914.pth"
+        # Define the model config and checkpoint files
+        pose_config_id = "td-hm_res50_8xb64-100e_freihand2d-224x224"
+        pose_checkpoint = "res50_freihand_224x224-ff0799bc_20200914.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_model_ckpt = os.path.join(destination, pose_checkpoint)
+
     elif method == "HRNet_dark":
-        pose_model_cfg = os.path.join(
-            MODEL_DATA_DIR,
-            "mmpose/config/hand_2d_keypoint/topdown_heatmap/rhd2d/td-hm_hrnetv2-w18_dark-8xb64-210e_rhd2d-256x256.py",
-        )
-        pose_model_ckpt = "https://download.openmmlab.com/mmpose/hand/dark/hrnetv2_w18_rhd2d_256x256_dark-4df3a347_20210330.pth"
+        # Define the model config and checkpoint files
+        pose_config_id = "td-hm_hrnetv2-w18_dark-8xb64-210e_rhd2d-256x256"
+        pose_checkpoint = "hrnetv2_w18_rhd2d_256x256_dark-4df3a347_20210330.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_model_ckpt = os.path.join(destination, pose_checkpoint)
+        
     elif method == "HRNet_udp":
-        pose_model_cfg = os.path.join(
-            MODEL_DATA_DIR,
-            "mmpose/config/hand_2d_keypoint/topdown_heatmap/onehand10k/td-hm_hrnetv2-w18_udp-8xb64-210e_onehand10k-256x256.py",
-        )
-        pose_model_ckpt = "https://download.openmmlab.com/mmpose/hand/udp/hrnetv2_w18_onehand10k_256x256_udp-0d1b515d_20210330.pth"
+        # Define the model config and checkpoint files
+        pose_config_id = "td-hm_hrnetv2-w18_udp-8xb64-210e_onehand10k-256x256"
+        pose_checkpoint = "hrnetv2_w18_onehand10k_256x256_udp-0d1b515d_20210330.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_model_ckpt = os.path.join(destination, pose_checkpoint)
 
     device = "cuda"
     model = init_model(pose_model_cfg, pose_model_ckpt, device=device)
