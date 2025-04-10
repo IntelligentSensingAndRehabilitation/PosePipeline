@@ -493,6 +493,7 @@ class TrackingBboxMethodLookup(dj.Lookup):
         {"tracking_method": 7, "tracking_method_name": "MMTrack_qdtrack"},
         {"tracking_method": 8, "tracking_method_name": "MMDet_deepsort"},
         {"tracking_method": 9, "tracking_method_name": "MMDet_qdtrack"},
+        {"tracking_method": 10, "tracking_method_name": "MMDet_rtmdet"},
     ]
 
 
@@ -546,6 +547,12 @@ class TrackingBbox(dj.Computed):
             from pose_pipeline.wrappers.mmdet import mmdet_bounding_boxes
 
             tracks = mmdet_bounding_boxes(video, "qdtrack")
+            key["tracks"] = tracks
+        
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMDet_rtmdet":
+            from pose_pipeline.wrappers.mmdet import mmdet_bounding_boxes
+
+            tracks = mmdet_bounding_boxes(video, "rtmdet")
             key["tracks"] = tracks
 
         elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMTrack_bytetrack":

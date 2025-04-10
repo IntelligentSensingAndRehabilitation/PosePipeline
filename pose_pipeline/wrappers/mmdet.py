@@ -54,6 +54,27 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
         # register all modules from mmdet
         register_all_modules()
 
+    elif method == "rtmdet":
+
+        # Define the model config id and checkpoints
+        config_id = "rtmdet_x_8xb32-300e_coco"
+        detector_checkpoint_name = "rtmdet_x_8xb32-300e_coco_20220715_230555-cc79b9ae.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmdetection/{method}/")
+
+        # download the model and checkpoints
+        download(package, [config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        model_config = os.path.join(destination, f"{config_id}.py")
+        detector_checkpoint = os.path.join(destination, detector_checkpoint_name)
+        reid_checkpoint = None
+
+        # register all modules from mmdet
+        register_all_modules()
+
+
     # elif method == "rtmdet_hand":
 
     #     from mmdet.apis import inference_detector, init_detector
