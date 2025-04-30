@@ -2043,7 +2043,6 @@ class HandBboxMethodLookup(dj.Lookup):
     contents = [
         {"detection_method": 0, "detection_method_name": "RTMDet"},
         {"detection_method": 1, "detection_method_name": "TopDown"},
-        {"detection_method": 2, "detection_method_name": "3Dto2D"},
         {"detection_method": 3, "detection_method_name": "MoviTopDown"},
         
     ]
@@ -2082,27 +2081,6 @@ class HandBbox(dj.Computed):
             num_boxes, bboxes = make_bbox_from_keypoints(keypoints)
             key["bboxes"] = bboxes
             key["num_boxes"] = num_boxes
-        elif (HandBboxMethodLookup & key).fetch1("detection_method_name") == "3Dto2D":
-            #Using 3Dto2D table keypoints for HALPE to create right and left hand bboxes 
-            #Requires installation of multi_camera library.
-            from multi_camera.analysis.camera import robust_triangulate_points,project_distortion
-            from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
-            from multi_camera.datajoint.sessions import Recording
-            keypoints, camera_name = (SingleCameraVideo * MultiCameraRecording * TopDownPerson & (Recording & key) & "top_down_method=2").fetch("keypoints", "camera_name")
-            calibration_key = (CalibratedRecording & key).fetch1("KEY")
-            camera_calibration, camera_names = (Calibration & calibration_key).fetch1("camera_calibration", "camera_names")
-            
-            
-            order = [list(camera_name).index(c) for c in camera_names]
-            points2d = np.stack([keypoints[o][:, -42:, :] for o in order], axis=0)
- 
-            camera_num = list(camera_name).index((SingleCameraVideo & key).fetch1("camera_name"))
-            points3d, _ = robust_triangulate_points(camera_calibration, points2d, return_weights=True)
-            kp2d_proj = np.array([project_distortion(camera_calibration, i, points3d) for i in range(camera_calibration["mtx"].shape[0])])
-            num_boxes, bboxes = make_bbox_from_keypoints(kp2d_proj[camera_num])
-            key["bboxes"] = bboxes
-            key["num_boxes"] = num_boxes
-
         elif (HandBboxMethodLookup & key).fetch1("detection_method_name") == "MoviTopDown":
             from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
             keypoints = (TopDownPerson & key & "top_down_method=12").fetch1("keypoints")
