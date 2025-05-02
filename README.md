@@ -2,14 +2,14 @@
 
 ![Entity Relationship Diagram](https://github.com/IntelligentSensingAndRehabilitation/PosePipeline/blob/main/doc/erd.png?raw=True)
 
-PosePipe is a human pose estimation (HPE) pipeline designed to facilitate home movement analysis from videos.  
+PosePipe is a human pose estimation (HPE) pipeline designed to facilitate movement analysis from videos.  
 It uses [DataJoint](https://github.com/datajoint) to manage relationships between algorithms, videos, and intermediate outputs.
 
 Key features:
 - Modular wrappers for numerous state-of-the-art HPE algorithms
 - Structured video and data management via DataJoint
 - Output visualizations to easily compare and analyze results
-- Designed for clinical research and home movement analysis pipelines
+- Designed for clinical research movement analysis pipelines
 
 ---
 
