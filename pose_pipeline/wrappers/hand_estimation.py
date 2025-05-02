@@ -5,9 +5,10 @@ import datajoint as dj
 from pose_pipeline import Video
 from pose_pipeline.pipeline import HandBbox
 from tqdm import tqdm
-from mim import download 
+from mim import download
 
-package = 'mmpose'
+package = "mmpose"
+
 
 def mmpose_HPE(key, method="RTMPoseHand5"):
 
@@ -19,7 +20,9 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
     if method == "RTMPoseHand5":
         # Define the model config and checkpoint files
         pose_config_id = "rtmpose-m_8xb256-210e_hand5-256x256"
-        pose_checkpoint = "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth"
+        pose_checkpoint = (
+            "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth"
+        )
 
         # define the destination folder
         destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
@@ -30,7 +33,7 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
         # define the model config and checkpoints paths
         pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
         pose_model_ckpt = os.path.join(destination, pose_checkpoint)
-        
+
     elif method == "RTMPoseCOCO":
         # Define the model config and checkpoint files
         pose_config_id = "rtmpose-m_8xb32-210e_coco-wholebody-hand-256x256"
@@ -74,7 +77,7 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
         # define the model config and checkpoints paths
         pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
         pose_model_ckpt = os.path.join(destination, pose_checkpoint)
-        
+
     elif method == "HRNet_udp":
         # Define the model config and checkpoint files
         pose_config_id = "td-hm_hrnetv2-w18_udp-8xb64-210e_onehand10k-256x256"
@@ -164,7 +167,6 @@ def overlay_hand_keypoints(video, output_file, keypoints, bboxes):
             )  # Green color, 2 pixel thickness
 
             out.write(frame)
-        #remove
+        # remove
         out.release()
         cap.release()
-
