@@ -29,13 +29,6 @@ dj.config['stores'] = {
 
 4. To use `OpenMMLab` packages, the following additional step is required. 
 
-    - The first script should be used if `uv` is the package manager.
-    - The second script should be used with other package managers.
-
-```
-uv run bash scripts/mmlab_install.sh
-```
-
 ```
 bash scripts/mmlab_install_mim.sh
 ```
