@@ -2043,8 +2043,9 @@ class HandBboxMethodLookup(dj.Lookup):
     contents = [
         {"detection_method": 0, "detection_method_name": "RTMDet"},
         {"detection_method": 1, "detection_method_name": "TopDown"},
-        
+        {"detection_method": 3, "detection_method_name": "MoviTopDown"},
     ]
+
 
 @schema
 class HandBboxMethod(dj.Manual):
@@ -2062,28 +2063,49 @@ class HandBbox(dj.Computed):
     ---
     num_boxes   :   int
     bboxes      :   longblob
-    """   
-    def make(self,key):
+    """
+
+    def make(self, key):
         if (HandBboxMethodLookup & key).fetch1("detection_method_name") == "RTMDet":
-            #Using RTMDet from MMpose API to create any available hand bboxes
+            # Using RTMDet from MMpose API to create any available hand bboxes
             from pose_pipeline.wrappers.hand_bbox import mmpose_hand_det
+
             num_boxes, bboxes = mmpose_hand_det(key=key, method="RTMDet")
             key["bboxes"] = bboxes
             key["num_boxes"] = num_boxes
         elif (HandBboxMethodLookup & key).fetch1("detection_method_name") == "TopDown":
-            #Using TopDown table keypoints for HALPE to create right and left hand bboxes
+            # Using TopDown table keypoints for HALPE to create right and left hand bboxes
             from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
+
             try:
-                keypoints = (TopDownPerson & key & "top_down_method=2").fetch1("keypoints")
+                keypoints = (TopDownPerson & key & "top_down_method=2").fetch1(
+                    "keypoints"
+                )
             except:
-                raise Exception("TopDownPerson table does not have the required keypoints")
-            bboxes = make_bbox_from_keypoints(keypoints)
+                raise Exception(
+                    "TopDownPerson table does not have the required keypoints"
+                )
+            num_boxes, bboxes = make_bbox_from_keypoints(keypoints)
             key["bboxes"] = bboxes
-            key["num_boxes"] = 2 
+            key["num_boxes"] = num_boxes
+        elif (HandBboxMethodLookup & key).fetch1(
+            "detection_method_name"
+        ) == "MoviTopDown":
+            from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
+
+            keypoints = (TopDownPerson & key & "top_down_method=12").fetch1("keypoints")
+            num_boxes, bboxes = make_bbox_from_keypoints(
+                keypoints,
+                method="movi",
+                width=160,
+                height=160,
+            )
+            key["bboxes"] = bboxes
+            key["num_boxes"] = num_boxes
         else:
             raise Exception(f"Method not implemented")
-
         self.insert1(key)
+
 
 @schema
 class HandPoseEstimationMethodLookup(dj.Lookup):
@@ -2133,7 +2155,9 @@ class HandPoseEstimationMethodLookup(dj.Lookup):
                 "DIP5",
                 "TIP5",
             ]
-            return [name.lower() + "_r" for name in names] + [name.lower() + "_l" for name in names]
+            return [name.lower() + "_r" for name in names] + [
+                name.lower() + "_l" for name in names
+            ]
         elif method == "HRNet_dark":
             return [
                 "Wrist",
@@ -2158,6 +2182,51 @@ class HandPoseEstimationMethodLookup(dj.Lookup):
                 "PIP5",
                 "MCP5",
             ]
+        elif method == "bimanual":
+            return [
+                "Wrist",
+                "CMC1",
+                "MCP1",
+                "IP1",
+                "TIP1",
+                "MCP2",
+                "PIP2",
+                "DIP2",
+                "TIP2",
+                "MCP3",
+                "PIP3",
+                "DIP3",
+                "TIP3",
+                "MCP4",
+                "PIP4",
+                "DIP4",
+                "TIP4",
+                "MCP5",
+                "PIP5",
+                "DIP5",
+                "TIP5",
+                "Wrist_l",
+                "CMC1_l",
+                "MCP1_l",
+                "IP1_l",
+                "TIP1_l",
+                "MCP2_l",
+                "PIP2_l",
+                "DIP2_l",
+                "TIP2_l",
+                "MCP3_l",
+                "PIP3_l",
+                "DIP3_l",
+                "TIP3_l",
+                "MCP4_l",
+                "PIP4_l",
+                "DIP4_l",
+                "TIP4_l",
+                "MCP5_l",
+                "PIP5_l",
+                "DIP5_l",
+                "TIP5_l",
+            ]
 
 
 @schema
@@ -2175,29 +2244,49 @@ class HandPoseEstimation(dj.Computed):
     -> HandPoseEstimationMethod
     ---
     keypoints_2d       : longblob  #(time, [21 righthand-21 lefthand], 3)
-    """   
-    def make(self,key):
-        if (HandPoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "RTMPoseHand5":
+    """
+
+    def make(self, key):
+        if (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "RTMPoseHand5":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
-            key["keypoints_2d"] = mmpose_HPE(key, 'RTMPoseHand5')
-        elif (HandPoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "RTMPoseCOCO":
+
+            key["keypoints_2d"] = mmpose_HPE(key, "RTMPoseHand5")
+        elif (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "RTMPoseCOCO":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
-            key["keypoints_2d"] = mmpose_HPE(key, 'RTMPoseCOCO')
-        elif (HandPoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "freihand":
+
+            key["keypoints_2d"] = mmpose_HPE(key, "RTMPoseCOCO")
+        elif (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "freihand":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
-            key["keypoints_2d"] = mmpose_HPE(key, 'freihand')
-        elif (HandPoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "HRNet_dark":
+
+            key["keypoints_2d"] = mmpose_HPE(key, "freihand")
+        elif (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "HRNet_dark":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
-            key["keypoints_2d"] = mmpose_HPE(key, 'HRNet_dark')
-        elif (HandPoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "HRNet_udp":
+
+            key["keypoints_2d"] = mmpose_HPE(key, "HRNet_dark")
+        elif (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "HRNet_udp":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
-            key["keypoints_2d"] = mmpose_HPE(key, 'HRNet_udp')
-        elif (HandPoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "Halpe":
+
+            key["keypoints_2d"] = mmpose_HPE(key, "HRNet_udp")
+        elif (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "Halpe":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
+
             kp2d = (TopDownPerson & key & "top_down_method=2").fetch1("keypoints")
-            key["keypoints_2d"] = np.concatenate((kp2d[:,-21:,:],kp2d[:,-42:-21,:]),axis=1)
+            key["keypoints_2d"] = np.concatenate(
+                (kp2d[:, -21:, :], kp2d[:, -42:-21, :]), axis=1
+            )
         else:
             raise Exception(f"Method not implemented")
-        
-        
+
         self.insert1(key)
