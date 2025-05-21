@@ -1,9 +1,9 @@
 [project]
 name = "pose_pipeline"
-version = "2024.01.14"
+version = "2025.05.02"
 description = "Video pose analysis pipelines for DataJoint."
 readme = "README.md"
-requires-python = "~=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "datajoint>=0.14.2",
     "opencv-python==4.9.0.80",
