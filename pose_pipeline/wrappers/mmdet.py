@@ -129,7 +129,7 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
     #     model = mmdet.apis.init_detector(config=model_config, checkpoint=detector_checkpoint, device="cpu")
     #     model.cfg = adapt_mmdet_pipeline(model.cfg)
     if method == "rtmdet":
-        model = mmdet.apis.init_detector(config=model_config, checkpoint=detector_checkpoint, device="cpu")
+        model = mmdet.apis.init_detector(config=model_config, checkpoint=detector_checkpoint)
         model.cfg = adapt_mmdet_pipeline(model.cfg)
     else:
         model = mmdet.apis.init_track_model(config=model_config, detector=detector_checkpoint, reid=reid_checkpoint)
@@ -158,10 +158,21 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
 
         if method == "rtmdet":
             result = mmdet.apis.inference_detector(model=model, imgs=frame)
-            bboxes = result.pred_instances.bboxes.numpy()
-            track_ids = result.pred_instances.labels
-            confidences = result.pred_instances.scores
+            bboxes = result.pred_instances.bboxes.cpu().numpy()
+            track_ids = result.pred_instances.labels.cpu().numpy()
+            confidences = result.pred_instances.scores.cpu().numpy()
             # print(bboxes, track_ids, confidences)
+
+            CONF_THRESH = 0.5  # Set your desired confidence threshold
+            # Convert confidences to NumPy array if it's a torch Tensor
+            confidences = confidences.numpy() if hasattr(confidences, 'numpy') else confidences
+
+            # Apply threshold
+            keep = confidences >= CONF_THRESH
+            bboxes = bboxes[keep]
+            track_ids = track_ids[keep]
+            confidences = confidences[keep]
+
         else:
             result = mmdet.apis.inference_mot(model=model, img=frame, frame_id=frame_id, video_len=video_length)
             # MMDet uses a custom data structure to store the results
