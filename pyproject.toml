@@ -6,13 +6,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "datajoint>=0.14.2",
-    "opencv-python==4.9.0.80",
-    "torch>=2.0.1",
-    "torchvision>=0.15.2",
-    "torchaudio>=2.0.2",
-    "opencv-contrib-python==4.9.0.80",
+    "torch>=2.5.1",
+    "torchvision",
+    "torchaudio",
+    "opencv-contrib-python >= 4.10",
     "matplotlib>=3.9.2",
-    "numpy>1.24,<2.0.0", # tensorflow, jax and opencv are built with numpy < 2.0.0
+    "numpy",
     "pyrender>=0.1.45",
     "tensorflow[and-cuda]>=2.14.0",
     "tensorflow-hub",
@@ -44,7 +43,18 @@ requires-dist = ["numpy>=1.10.1"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchaudio = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
 [[tool.uv.index]]
-name = "pytorch-cu124"
-url = "https://download.pytorch.org/whl/cu124"
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
 explicit = true
