@@ -86,8 +86,12 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
         # define the destination folder
         destination = os.path.join(MODEL_DATA_DIR, f"mmdetection/{method}/")
 
-        # # download the model and checkpoints
-        # download(package, [config_id], dest_root=destination)
+        # Check if model config and checkpoint already exist
+        model_config_path = os.path.join(destination, f"{config_id}.py")
+        detector_checkpoint_path = os.path.join(destination, detector_checkpoint_name)
+
+        if not (os.path.exists(model_config_path) and os.path.exists(detector_checkpoint_path)):
+            download(package, [config_id], dest_root=destination)
 
         # define the model config and checkpoints paths
         model_config = os.path.join(destination, f"{config_id}.py")
