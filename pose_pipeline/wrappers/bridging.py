@@ -141,13 +141,80 @@ def bridging_formats_bottom_up(key, model=None, skeleton=""):
 
     return {"boxes": boxes, "keypoints2d": keypoints2d, "keypoints3d": keypoints3d, "keypoint_noise": keypoint_noises}
 
+
+# Define bbox conversion function: tlhw to tlbr
+def tlhw_to_tlbr_batch(tlhw_boxes):
+    """
+    Convert multiple bounding boxes from [x1, y1, width, height] to [x1, y1, x2, y2].
+
+    Parameters:
+        tlhw_boxes (array-like): Nx4 array-like (e.g. list of lists or NumPy array)
+                                 where each row is [x1, y1, width, height]
+
+    Returns:
+        np.ndarray: Nx4 array of boxes in [x1, y1, x2, y2] format
+    """
+    tlhw_boxes = np.asarray(tlhw_boxes)
+    x1y1 = tlhw_boxes[:, :2]
+    wh = tlhw_boxes[:, 2:]
+    x2y2 = x1y1 + wh
+    return np.hstack((x1y1, x2y2))
+
+
+# Define cropping function to crop image to bbox
+def crop_image_to_bbox(image, bbox, padding_ratio=0.2):
+    """
+    Crop image to bbox with padding.
+    
+    Args:
+        image: RGB image array
+        bbox: [x1, y1, x2, y2] in TLBR format
+        padding_ratio: Amount of padding to add (0.2 = 20%)
+    Returns:
+        cropped_image: Cropped RGB image array
+        crop_params: Dict with crop parameters for remapping keypoints
+    """
+
+    # Handle case where bbox is shape (1, 4) instead of (4,)
+    if bbox.ndim > 1:
+        bbox = bbox[0]  # Take first bbox if multiple
+
+    x1, y1, x2, y2 = bbox
+    w, h = x2 - x1, y2 - y1
+    
+    # Add padding
+    pad_w = w * padding_ratio
+    pad_h = h * padding_ratio
+    x1_pad = max(0, x1 - pad_w)
+    y1_pad = max(0, y1 - pad_h)
+    x2_pad = min(image.shape[1], x2 + pad_w)
+    y2_pad = min(image.shape[0], y2 + pad_h)
+    
+    # Crop image
+    crop = image[int(y1_pad):int(y2_pad), int(x1_pad):int(x2_pad)]
+    
+    return crop, {"offset_x": x1_pad, "offset_y": y1_pad}
+
+
+# Define remapping function to remap keypoints back to original image coordinates
+def remap_keypoints(keypoints, crop_params):
+    """
+    Remap keypoints from crop coordinates back to original image coordinates.
+    """
+    keypoints_mapped = keypoints.copy()
+    keypoints_mapped[..., 0] += crop_params["offset_x"]
+    keypoints_mapped[..., 1] += crop_params["offset_y"]
+    return keypoints_mapped
+
+
 # Bridging with focused keypoint detection using external bounding boxes
-def bridging_formats_with_external_bbox(key, external_bboxes, model=None, skeleton=""):
+def bridging_formats_with_external_bbox(key, external_bboxes, bbox_present, model=None, skeleton=""):
     """
     Run MeTRAbs pose estimation using externally provided bounding boxes for each frame.
     Args:
         key: DataJoint key for the video.
-        external_bboxes: np.ndarray, shape (num_frames, num_people, 4), each bbox as [x, y, w, h].
+        external_bboxes: np.ndarray, shape (num_frames, 4), each bbox as [x, y, w, h]
+        bbox_present: np.ndarray, shape (num_frames,), boolean array indicating if bbox is present for each frame
         model: Optionally provide a loaded MeTRAbs model.
         skeleton: Skeleton type for the model.
     Returns:
@@ -164,78 +231,64 @@ def bridging_formats_with_external_bbox(key, external_bboxes, model=None, skelet
     cap = cv2.VideoCapture(video)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    # Convert external bounding boxes from [x, y, width, height] to [x1, y1, x2, y2]
+    external_bboxes_tlbr = tlhw_to_tlbr_batch(external_bboxes)
+
+    boxes = []
     keypoints2d = []
     keypoints3d = []
     keypoint_noises = []
-    boxes = []
 
+    # Iterate through each frame
     for frame_idx in tqdm(range(video_length)):
+
+        # Should match the length of identified person tracks
         ret, frame = cap.read()
         assert ret and frame is not None
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_bboxes = external_bboxes[frame_idx]  # shape: (num_people, 4)
-        frame_keypoints2d = []
-        frame_keypoints3d = []
-        frame_keypoint_noises = []
-        frame_boxes = []
 
-        for bbox in frame_bboxes:
-            x, y, w, h = map(int, bbox[:4])
-            if w <= 0 or h <= 0:
-                # Skip invalid bbox
-                frame_keypoints2d.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0], 2)))
-                frame_keypoints3d.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0], 3)))
-                frame_keypoint_noises.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0],)))
-                frame_boxes.append(bbox)
-                continue
+        # If no bounding box is present, append empty arrays
+        if not bbox_present[frame_idx]:     
+            boxes.append(np.zeros((0, 4)))
+            keypoints2d.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0], 2)))
+            keypoints3d.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0], 3)))
+            keypoint_noises.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0],)))
+            continue
+        
+        # Get the external bounding box for the current frame
+        bbox = external_bboxes_tlbr[frame_idx]
+        if bbox.ndim == 1:
+            bbox = bbox[None, :]  # shape (1, 4)
+        
+        # Crop image to the bbox
+        crop, crop_params = crop_image_to_bbox(frame, bbox, padding_ratio=0.2)
 
-            crop = frame[y:y+h, x:x+w]
-            if crop.size == 0:
-                # Skip if crop is empty
-                frame_keypoints2d.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0], 2)))
-                frame_keypoints3d.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0], 3)))
-                frame_keypoint_noises.append(np.zeros((model.per_skeleton_indices[skeleton].shape[0],)))
-                frame_boxes.append(bbox)
-                continue
+        # Run detection on the cropped images
+        pred = model.detect_poses(crop, skeleton=skeleton, num_aug=10, average_aug=False,
+                                  detector_flip_aug=True, detector_threshold=0.1)
 
-            pred = model.detect_poses(
-                crop,
-                skeleton=skeleton,
-                num_aug=10,
-                average_aug=False,
-                detector_flip_aug=True,
-                detector_threshold=0.1
-            )
-
-            # Take mean over augmentations
-            kp2d = np.mean(pred["poses2d"].numpy(), axis=1)
-            kp3d = np.mean(pred["poses3d"].numpy(), axis=1)
-            noise = augmentation_noise(pred["poses3d"].numpy())
-
-            # Map keypoints2d back to original image coordinates
-            kp2d[..., 0] += x
-            kp2d[..., 1] += y
-
-            frame_keypoints2d.append(kp2d[0] if kp2d.shape[0] > 0 else np.zeros((model.per_skeleton_indices[skeleton].shape[0], 2)))
-            frame_keypoints3d.append(kp3d[0] if kp3d.shape[0] > 0 else np.zeros((model.per_skeleton_indices[skeleton].shape[0], 3)))
-            frame_keypoint_noises.append(noise[0] if noise.shape[0] > 0 else np.zeros((model.per_skeleton_indices[skeleton].shape[0],)))
-            frame_boxes.append(bbox)
-
-        keypoints2d.append(np.stack(frame_keypoints2d))
-        keypoints3d.append(np.stack(frame_keypoints3d))
-        keypoint_noises.append(np.stack(frame_keypoint_noises))
-        boxes.append(np.stack(frame_boxes))
+        # Get keypoints and ensure consistent shape
+        kp2d = np.mean(pred["poses2d"].numpy(), axis=1)         # Average over augmentations
+        kp2d_mapped = remap_keypoints(kp2d, crop_params)
+        kp3d = np.mean(pred["poses3d"].numpy(), axis=1)
+        
+        # Ensure we have at least one detection
+        if len(kp2d_mapped) > 0:
+            # Take first detection if multiple found in crop
+            if len(kp2d_mapped) > 1:
+                kp2d_mapped = kp2d_mapped[0:1]  # Keep shape as (1, num_joints, 2)
+                kp3d = kp3d[0:1]                # Keep shape as (1, num_joints, 3)
+            
+            boxes.append(bbox)
+            keypoints2d.append(kp2d_mapped)
+            keypoints3d.append(kp3d)
+            keypoint_noises.append(augmentation_noise(pred["poses3d"].numpy())[0:1])
 
     cap.release()
     os.remove(video)
 
-    return {
-        "boxes": boxes,
-        "keypoints2d": keypoints2d,
-        "keypoints3d": keypoints3d,
-        "keypoint_noise": keypoint_noises,
-    }
+    return {"boxes": boxes, "keypoints2d": keypoints2d, "keypoints3d": keypoints3d, "keypoint_noise": keypoint_noises}
 
 
 def get_overlay_callback(boxes, poses2d, joint_edges=None):

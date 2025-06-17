@@ -1081,6 +1081,7 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = (BottomUpPerson & key & {"bottom_up_method_name": "OpenPose_HR"}).fetch1("keypoints")
         elif method_name == "OpenPose_LR":
             key["keypoints"] = (BottomUpPerson & key & {"bottom_up_method_name": "OpenPose_LR"}).fetch1("keypoints")
+
         elif method_name == "Bridging_COCO_25":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
@@ -1090,6 +1091,7 @@ class TopDownPerson(dj.Computed):
             # Filter out keypoints that are outside of the image since confidence estimates do
             # not capture this
             key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
         elif method_name == "Bridging_bml_movi_87":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
@@ -1099,6 +1101,7 @@ class TopDownPerson(dj.Computed):
             # Filter out keypoints that are outside of the image since confidence estimates do
             # not capture this
             key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
         elif method_name == "Bridging_smpl+head_30":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
@@ -1108,6 +1111,79 @@ class TopDownPerson(dj.Computed):
             # Filter out keypoints that are outside of the image since confidence estimates do
             # not capture this
             key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
+        elif method_name == "Bridging_ExtDetector_COCO_25":
+            from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
+            from pose_pipeline.wrappers.bridging import filter_skeleton
+            from pose_pipeline.wrappers.bridging import noise_to_conf
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+
+            # Define external bbox from PersonBbox
+            ext_bbox = (PersonBbox & key).fetch1("bbox")
+            bbox_present = (PersonBbox & key).fetch1("present")
+
+            # Perform bridging, extract keypoints and noise
+            results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
+            keypoints2d = results['keypoints2d']
+            keypoints3d = results['keypoints3d']
+            keypoints_noise = results['keypoint_noise']
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])
+
+            # Assign keypoints to the key
+            key["keypoints"] = keypoints_2d_conf
+            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "coco_25"))
+            # Filter out keypoints that are outside of the image since confidence estimates do not capture this
+            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
+        elif method_name == "Bridging_ExtDetector_bml_movi_87":
+            from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
+            from pose_pipeline.wrappers.bridging import filter_skeleton
+            from pose_pipeline.wrappers.bridging import noise_to_conf
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+
+            # Define external bbox from PersonBbox
+            ext_bbox = (PersonBbox & key).fetch1("bbox")
+            bbox_present = (PersonBbox & key).fetch1("present")
+
+            # Perform bridging, extract keypoints and noise
+            results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
+            keypoints2d = results['keypoints2d']
+            keypoints3d = results['keypoints3d']
+            keypoints_noise = results['keypoint_noise']
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])
+
+            # Assign keypoints to the key
+            key["keypoints"] = keypoints_2d_conf
+            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "bml_movi_87"))
+            # Filter out keypoints that are outside of the image since confidence estimates do not capture this
+            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
+        elif method_name == "Bridging_ExtDetector_smpl+head_30":
+            from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
+            from pose_pipeline.wrappers.bridging import filter_skeleton
+            from pose_pipeline.wrappers.bridging import noise_to_conf
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+
+            # Define external bbox from PersonBbox
+            ext_bbox = (PersonBbox & key).fetch1("bbox")
+            bbox_present = (PersonBbox & key).fetch1("present")
+
+            # Perform bridging, extract keypoints and noise
+            results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
+            keypoints2d = results['keypoints2d']
+            keypoints3d = results['keypoints3d']
+            keypoints_noise = results['keypoint_noise']
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])
+
+            # Assign keypoints to the key
+            key["keypoints"] = keypoints_2d_conf
+            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "smpl+head_30"))
+            # Filter out keypoints that are outside of the image since confidence estimates do not capture this
+            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
         elif method_name == "MMPose_RTMPose_Coco_Wholebody":
             from .wrappers.mmpose import mmpose_top_down_person
             key["keypoints"] = mmpose_top_down_person(key, "RTMPose_coco-wholebody")
