@@ -1012,6 +1012,10 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 15, "top_down_method_name": "MMPose_RTMPose_Coco_Wholebody"},
         {"top_down_method": 16, "top_down_method_name": "MMPose_RTMPose_Cocktail14"},
         {"top_down_method": 17, "top_down_method_name": "MMPose_VitPose_H"},
+        {"top_down_method": 18, "top_down_method_name": "Bridging_ExtDetector_COCO_25"},
+        {"top_down_method": 19, "top_down_method_name": "Bridging_ExtDetector_bml_movi_87"},
+        {"top_down_method": 20, "top_down_method_name": "Bridging_ExtDetector_smpl+head_30"},
+        {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"}
     ]
 
 
@@ -1112,11 +1116,21 @@ class TopDownPerson(dj.Computed):
             # not capture this
             key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
 
+        elif method_name == "Bridging_smplx_42":
+            from pose_pipeline.wrappers.bridging import filter_skeleton
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+
+            key["keypoints"] = (BottomUpBridgingPerson & key).fetch1("keypoints")
+            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "smplx_42"))
+            # Filter out keypoints that are outside of the image since confidence estimates do
+            # not capture this
+            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+
         elif method_name == "Bridging_ExtDetector_COCO_25":
             from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.wrappers.bridging import noise_to_conf
-            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image, keypoints_filter_clipped_image3d
 
             # Define external bbox from PersonBbox
             ext_bbox = (PersonBbox & key).fetch1("bbox")
@@ -1124,23 +1138,29 @@ class TopDownPerson(dj.Computed):
 
             # Perform bridging, extract keypoints and noise
             results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
-            keypoints2d = results['keypoints2d']
-            keypoints3d = results['keypoints3d']
-            keypoints_noise = results['keypoint_noise']
-            conf = noise_to_conf(keypoints_noise)
-            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])
+            keypoints2d = results['keypoints2d']            # shape: (N, J, 2)
+            keypoints3d = results['keypoints3d']            # shape: (N, J, 3)
+            keypoints_noise = results['keypoint_noise']     # shape: (N, J)
 
-            # Assign keypoints to the key
-            key["keypoints"] = keypoints_2d_conf
-            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "coco_25"))
-            # Filter out keypoints that are outside of the image since confidence estimates do not capture this
-            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+            # Compute confidence from noise, add to keypoint arrays
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])   # shape: (N, J, 3) 
+            keypoints_3d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints3d, conf)])   # shape: (N, J, 4)
+
+            # Filter and Clip Keypoints
+            keypoints_2d_filtered = np.array(filter_skeleton(keypoints_2d_conf, "coco_25"))                             # shape: (N, J, 3) 
+            keypoints_2d_clipped = keypoints_filter_clipped_image(key, keypoints_2d_filtered)                           # shape: (N, J, 3) 
+            keypoints_3d_filtered = np.array(filter_skeleton(keypoints_3d_conf, "coco_25"))                             # shape: (N, J, 4)
+            keypoints_3d_clipped = keypoints_filter_clipped_image3d(key, keypoints_2d_filtered, keypoints_3d_filtered)  # shape: (N, J, 4)
+
+            # Assign 2d keypoints to the key
+            key["keypoints"] = keypoints_2d_clipped
 
         elif method_name == "Bridging_ExtDetector_bml_movi_87":
             from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.wrappers.bridging import noise_to_conf
-            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image, keypoints_filter_clipped_image3d
 
             # Define external bbox from PersonBbox
             ext_bbox = (PersonBbox & key).fetch1("bbox")
@@ -1148,23 +1168,29 @@ class TopDownPerson(dj.Computed):
 
             # Perform bridging, extract keypoints and noise
             results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
-            keypoints2d = results['keypoints2d']
-            keypoints3d = results['keypoints3d']
-            keypoints_noise = results['keypoint_noise']
-            conf = noise_to_conf(keypoints_noise)
-            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])
+            keypoints2d = results['keypoints2d']            # shape: (N, J, 2)
+            keypoints3d = results['keypoints3d']            # shape: (N, J, 3)
+            keypoints_noise = results['keypoint_noise']     # shape: (N, J)
 
-            # Assign keypoints to the key
-            key["keypoints"] = keypoints_2d_conf
-            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "bml_movi_87"))
-            # Filter out keypoints that are outside of the image since confidence estimates do not capture this
-            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+            # Compute confidence from noise, add to keypoint arrays
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])   # shape: (N, J, 3) 
+            keypoints_3d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints3d, conf)])   # shape: (N, J, 4)
+
+            # Filter and Clip Keypoints
+            keypoints_2d_filtered = np.array(filter_skeleton(keypoints_2d_conf, "bml_movi_87"))                         # shape: (N, J, 3) 
+            keypoints_2d_clipped = keypoints_filter_clipped_image(key, keypoints_2d_filtered)                           # shape: (N, J, 3) 
+            keypoints_3d_filtered = np.array(filter_skeleton(keypoints_3d_conf, "bml_movi_87"))                         # shape: (N, J, 4)
+            keypoints_3d_clipped = keypoints_filter_clipped_image3d(key, keypoints_2d_filtered, keypoints_3d_filtered)  # shape: (N, J, 4)
+
+            # Assign 2d keypoints to the key
+            key["keypoints"] = keypoints_2d_clipped
 
         elif method_name == "Bridging_ExtDetector_smpl+head_30":
             from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.wrappers.bridging import noise_to_conf
-            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image, keypoints_filter_clipped_image3d
 
             # Define external bbox from PersonBbox
             ext_bbox = (PersonBbox & key).fetch1("bbox")
@@ -1172,17 +1198,53 @@ class TopDownPerson(dj.Computed):
 
             # Perform bridging, extract keypoints and noise
             results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
-            keypoints2d = results['keypoints2d']
-            keypoints3d = results['keypoints3d']
-            keypoints_noise = results['keypoint_noise']
-            conf = noise_to_conf(keypoints_noise)
-            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])
+            keypoints2d = results['keypoints2d']            # shape: (N, J, 2)
+            keypoints3d = results['keypoints3d']            # shape: (N, J, 3)
+            keypoints_noise = results['keypoint_noise']     # shape: (N, J)
 
-            # Assign keypoints to the key
-            key["keypoints"] = keypoints_2d_conf
-            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "smpl+head_30"))
-            # Filter out keypoints that are outside of the image since confidence estimates do not capture this
-            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
+            # Compute confidence from noise, add to keypoint arrays
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])   # shape: (N, J, 3) 
+            keypoints_3d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints3d, conf)])   # shape: (N, J, 4)
+
+            # Filter and Clip Keypoints
+            keypoints_2d_filtered = np.array(filter_skeleton(keypoints_2d_conf, "smpl+head_30"))                         # shape: (N, J, 3) 
+            keypoints_2d_clipped = keypoints_filter_clipped_image(key, keypoints_2d_filtered)                            # shape: (N, J, 3) 
+            keypoints_3d_filtered = np.array(filter_skeleton(keypoints_3d_conf, "smpl+head_30"))                         # shape: (N, J, 4)
+            keypoints_3d_clipped = keypoints_filter_clipped_image3d(key, keypoints_2d_filtered, keypoints_3d_filtered)   # shape: (N, J, 4)
+
+            # Assign 2d keypoints to the key
+            key["keypoints"] = keypoints_2d_clipped
+
+        elif method_name == "Bridging_ExtDetector_smplx_42":
+            from pose_pipeline.wrappers.bridging import bridging_formats_with_external_bbox
+            from pose_pipeline.wrappers.bridging import filter_skeleton
+            from pose_pipeline.wrappers.bridging import noise_to_conf
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image, keypoints_filter_clipped_image3d
+
+            # Define external bbox from PersonBbox
+            ext_bbox = (PersonBbox & key).fetch1("bbox")
+            bbox_present = (PersonBbox & key).fetch1("present")
+
+            # Perform bridging, extract keypoints and noise
+            results = bridging_formats_with_external_bbox(key, ext_bbox, bbox_present)
+            keypoints2d = results['keypoints2d']            # shape: (N, J, 2)
+            keypoints3d = results['keypoints3d']            # shape: (N, J, 3)
+            keypoints_noise = results['keypoint_noise']     # shape: (N, J)
+
+            # Compute confidence from noise, add to keypoint arrays
+            conf = noise_to_conf(keypoints_noise)
+            keypoints_2d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints2d, conf)])   # shape: (N, J, 3) 
+            keypoints_3d_conf= np.array([np.concatenate([k, c[:, None]], axis=1) for k, c in zip(keypoints3d, conf)])   # shape: (N, J, 4)
+
+            # Filter and Clip Keypoints
+            keypoints_2d_filtered = np.array(filter_skeleton(keypoints_2d_conf, "smplx_42"))                             # shape: (N, J, 3) 
+            keypoints_2d_clipped = keypoints_filter_clipped_image(key, keypoints_2d_filtered)                            # shape: (N, J, 3) 
+            keypoints_3d_filtered = np.array(filter_skeleton(keypoints_3d_conf, "smplx_42"))                             # shape: (N, J, 4)
+            keypoints_3d_clipped = keypoints_filter_clipped_image3d(key, keypoints_2d_filtered, keypoints_3d_filtered)   # shape: (N, J, 4)
+
+            # Assign 2d keypoints to the key
+            key["keypoints"] = keypoints_2d_clipped
 
         elif method_name == "MMPose_RTMPose_Coco_Wholebody":
             from .wrappers.mmpose import mmpose_top_down_person
@@ -1204,15 +1266,6 @@ class TopDownPerson(dj.Computed):
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
 
-        elif method_name == "Bridging_smplx_42":
-            from pose_pipeline.wrappers.bridging import filter_skeleton
-            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
-
-            key["keypoints"] = (BottomUpBridgingPerson & key).fetch1("keypoints")
-            key["keypoints"] = np.array(filter_skeleton(key["keypoints"], "smplx_42"))
-            # Filter out keypoints that are outside of the image since confidence estimates do
-            # not capture this
-            key["keypoints"] = keypoints_filter_clipped_image(key, key["keypoints"])
         else:
             raise Exception("Method not implemented")
 
@@ -1221,6 +1274,30 @@ class TopDownPerson(dj.Computed):
         if scores is not None and visibility is not None:
             print("Inserting raw metrics")
             self.MMPoseRawMetrics.insert1(part_key)
+        
+        # for Bridging External Detection, force populate Lifting tables
+        if method_name == "Bridging_ExtDetector_COCO_25" or \
+           method_name == "Bridging_ExtDetector_bml_movi_87" or \
+           method_name == "Bridging_ExtDetector_smpl+head_30" or \
+           method_name == "Bridging_ExtDetector_smplx_42":
+
+            from pose_pipeline.wrappers.bridging import filter_skeleton
+            from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
+            
+            # Assign lifting method key based on the bridging method
+            lifting_method_number = (LiftingMethodLookup() & {'lifting_method_name': method_name}).fetch1('lifting_method')
+            lifting_key = dict(key)
+            lifting_key['lifting_method'] = lifting_method_number
+            LiftingMethod.insert1(lifting_key)
+
+            # Prepare lifting entry
+            entry = lifting_key.copy()
+            keypoints_valid = (keypoints_3d_clipped[:, :, -1] > 0.5)
+            entry["keypoints_3d"] = keypoints_3d_clipped
+            entry["keypoints_valid"] = keypoints_valid
+
+            # Insert into LiftingPerson (will fail if entry exists; use replace=True to overwrite)
+            LiftingPerson.insert1(entry)
 
     @staticmethod
     def joint_names(method="MMPose"):
@@ -1369,6 +1446,10 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 12, "lifting_method_name": "Bridging_bml_movi_87"},
         {"lifting_method": 13, "lifting_method_name": "Bridging_smpl+head_30"},
         {"lifting_method": 14, "lifting_method_name": "Bridging_smplx_42"},
+        {"lifting_method": 18, "lifting_method_name": "Bridging_ExtDetector_COCO_25"},
+        {"lifting_method": 19, "lifting_method_name": "Bridging_ExtDetector_bml_movi_87"},
+        {"lifting_method": 20, "lifting_method_name": "Bridging_ExtDetector_smpl+head_30"},
+        {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"}
     ]
 
 
