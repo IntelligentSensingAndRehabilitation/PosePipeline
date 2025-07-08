@@ -1048,6 +1048,8 @@ class TopDownPerson(dj.Computed):
         scores = None
         visibility = None
 
+        original_key = key.copy()
+
         method_name = (TopDownMethodLookup & key).fetch1("top_down_method_name")
         if method_name == "MMPose":
             from .wrappers.mmpose import mmpose_top_down_person
@@ -1283,13 +1285,11 @@ class TopDownPerson(dj.Computed):
 
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
-            
             # Assign lifting method key based on the bridging method
             lifting_method_number = (LiftingMethodLookup() & {'lifting_method_name': method_name}).fetch1('lifting_method')
-            lifting_key = dict(key)
+            lifting_key = original_key.copy()
             lifting_key['lifting_method'] = lifting_method_number
             LiftingMethod.insert1(lifting_key)
-
             # Prepare lifting entry
             entry = lifting_key.copy()
             keypoints_valid = (keypoints_3d_clipped[:, :, -1] > 0.5)
@@ -1297,7 +1297,7 @@ class TopDownPerson(dj.Computed):
             entry["keypoints_valid"] = keypoints_valid
 
             # Insert into LiftingPerson (will fail if entry exists; use replace=True to overwrite)
-            LiftingPerson.insert1(entry)
+            LiftingPerson.insert1(entry,allow_direct_insert=True)
 
     @staticmethod
     def joint_names(method="MMPose"):
