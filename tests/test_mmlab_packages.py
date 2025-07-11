@@ -62,11 +62,13 @@ def test_mmcv():
     print('Environment information:')
     print(dash_line + env_info + '\n' + dash_line)
 
-def test_mmdetection():
-    from mim import download 
-    import mmdet.apis
+def test_mmdetection_demo():
+    from mim import download
+    from mmdet.apis import DetInferencer
     from mmdet.utils import register_all_modules
-    from mmdet.apis import init_detector, inference_detector
+
+    # Register all modules from mmdet
+    register_all_modules()
 
     package = 'mmdet'
 
@@ -83,24 +85,8 @@ def test_mmdetection():
     download(package, [config_file], dest_root=destination)
 
     # Define the model config and checkpoints paths
-    model_config = os.path.join(destination, f"{config_file}.py")
-    detector_checkpoint = os.path.join(destination, checkpoint_file)
-    # Register all modules from mmdet
-    register_all_modules()
-
-    # Initialize the model
-    model = mmdet.apis.init_detector(model_config, detector_checkpoint, device='cuda:0')
-    # Perform inference
-    print(inference_detector(model, input_image_path))
-
-def test_mmdetection_demo():
-
-    from mmengine.logging import print_log
-    from mmdet.apis import DetInferencer
-
-    # Base path is relative to the location of this script
-    cfg_path = os.path.join(base_path, "mmdetection/rtmdet_tiny_8xb32-300e_coco.py")
-    ckpt_path = os.path.join(base_path, "mmdetection/rtmdet_tiny_8xb32-300e_coco_20220902_112414-78e30dcc.pth")
+    cfg_path = os.path.join(destination, f"{config_file}.py")
+    ckpt_path = os.path.join(destination, checkpoint_file)
 
     inferencer = DetInferencer(
         model=cfg_path,
@@ -124,18 +110,18 @@ def test_mmdetection_demo():
         print_result=True,
     )
 
-def test_mmpose():
+def test_mmpose_demo():
     from mim import download
-    from mmpose.apis import inference_topdown, init_model
+    from mmcv.image import imread
+    from mmpose.apis import init_model, inference_topdown
+    from mmpose.registry import VISUALIZERS
+    from mmpose.structures import merge_data_samples
     from mmpose.utils import register_all_modules
 
     # Register all modules from mmpose
     register_all_modules()
 
     package = 'mmpose'
-
-    # base path is relative to the location of this script
-    input_image_path = os.path.join(base_path, "det_demo.jpg")
 
     # Define the model config and checkpoint files
     pose_config_id = "td-hm_hrnet-w48_8xb32-210e_coco-256x192"
@@ -148,24 +134,8 @@ def test_mmpose():
     download(package, [pose_config_id], dest_root=destination)
 
     # define the model config and checkpoints paths
-    pose_cfg = os.path.join(destination, f"{pose_config_id}.py")
-    pose_ckpt = os.path.join(destination, pose_checkpoint)
-
-    # Initialize the model
-    pose_model = init_model(pose_cfg, pose_ckpt, device='cuda:0')
-
-    print(inference_topdown(pose_model, input_image_path))
-
-def test_mmpose_demo():
-    from mmengine.logging import print_log
-    from mmcv.image import imread
-    from mmpose.apis import init_model, inference_topdown
-    from mmpose.registry import VISUALIZERS
-    from mmpose.structures import merge_data_samples
-
-    # Base path is relative to the location of this script
-    cfg_path = os.path.join(base_path, "mmpose/td-hm_hrnet-w48_8xb32-210e_coco-256x192.py")
-    ckpt_path = os.path.join(base_path, "mmpose/td-hm_hrnet-w48_8xb32-210e_coco-256x192-0e67c616_20220913.pth")
+    cfg_path = os.path.join(destination, f"{pose_config_id}.py")
+    ckpt_path = os.path.join(destination, pose_checkpoint)
 
     model = init_model(
         cfg_path,
