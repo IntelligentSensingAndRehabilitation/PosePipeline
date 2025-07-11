@@ -1,11 +1,9 @@
 # This script confirms that the mmlab packages are installed correctly.
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
 
 # base path is relative to the location of this script
 base_path = os.path.dirname(__file__)
-
 
 def test_mmengine():
     import mmengine
