@@ -54,9 +54,6 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
         # register all modules from mmdet
         register_all_modules()
 
-    #     # register all modules from mmdet
-    #     register_all_modules()
-
     elif method == "rtmdet":
 
         from mmdet.apis import inference_detector, init_detector
