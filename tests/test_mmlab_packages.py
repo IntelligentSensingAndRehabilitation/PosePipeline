@@ -74,9 +74,6 @@ def test_mmdetection_demo():
     checkpoint_file = 'rtmdet_tiny_8xb32-300e_coco_20220902_112414-78e30dcc.pth'
 
     # Base path is relative to the location of this script
-    input_image_path = os.path.join(base_path, "det_demo.jpg")
-
-    # Define the destination folder relative to the location of this script
     destination = os.path.join(base_path, 'mmdetection/')
 
     # Download the model and checkpoints
