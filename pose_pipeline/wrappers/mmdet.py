@@ -54,6 +54,34 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
         # register all modules from mmdet
         register_all_modules()
 
+    elif method == "rtmdet":
+
+        from mmdet.apis import inference_detector, init_detector
+        from mmpose.utils import adapt_mmdet_pipeline
+
+        # Define the model config id and checkpoints
+        config_id = "rtmdet_x_8xb32-300e_coco"
+        detector_checkpoint_name = "rtmdet_x_8xb32-300e_coco_20220715_230555-cc79b9ae.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmdetection/{method}/")
+
+        # Check if model config and checkpoint already exist
+        model_config_path = os.path.join(destination, f"{config_id}.py")
+        detector_checkpoint_path = os.path.join(destination, detector_checkpoint_name)
+
+        if not (os.path.exists(model_config_path) and os.path.exists(detector_checkpoint_path)):
+            download(package, [config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        model_config = os.path.join(destination, f"{config_id}.py")
+        detector_checkpoint = os.path.join(destination, detector_checkpoint_name)
+        reid_checkpoint = None
+
+        # register all modules from mmdet
+        register_all_modules()
+
+
     # elif method == "rtmdet_hand":
 
     #     from mmdet.apis import inference_detector, init_detector
@@ -84,8 +112,11 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
     # if method == "rtmdet_hand":
     #     model = mmdet.apis.init_detector(config=model_config, checkpoint=detector_checkpoint, device="cpu")
     #     model.cfg = adapt_mmdet_pipeline(model.cfg)
-    # else:
-    model = mmdet.apis.init_track_model(config=model_config, detector=detector_checkpoint, reid=reid_checkpoint)
+    if method == "rtmdet":
+        model = mmdet.apis.init_detector(config=model_config, checkpoint=detector_checkpoint)
+        model.cfg = adapt_mmdet_pipeline(model.cfg)
+    else:
+        model = mmdet.apis.init_track_model(config=model_config, detector=detector_checkpoint, reid=reid_checkpoint)
 
     cap = cv2.VideoCapture(file_path)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -109,13 +140,29 @@ def mmdet_bounding_boxes(file_path, method="deepsort"):
 
         #     # print(bboxes, track_ids, confidences)
 
-        # else:
-        result = mmdet.apis.inference_mot(model=model, img=frame, frame_id=frame_id, video_len=video_length)
+        if method == "rtmdet":
+            result = mmdet.apis.inference_detector(model=model, imgs=frame)
+            bboxes = result.pred_instances.bboxes.cpu().numpy()
+            track_ids = result.pred_instances.labels.cpu().numpy()
+            confidences = result.pred_instances.scores.cpu().numpy()
+            # print(bboxes, track_ids, confidences)
 
-        # MMDet uses a custom data structure to store the results
-        bboxes = result.video_data_samples[0].pred_track_instances.bboxes.cpu().numpy()
-        track_ids = result.video_data_samples[0].pred_track_instances.instances_id
-        confidences = result.video_data_samples[0].pred_track_instances.scores
+            CONF_THRESH = 0.5  # Set your desired confidence threshold
+            # Convert confidences to NumPy array if it's a torch Tensor
+            confidences = confidences.numpy() if hasattr(confidences, 'numpy') else confidences
+
+            # Apply threshold
+            keep = confidences >= CONF_THRESH
+            bboxes = bboxes[keep]
+            track_ids = track_ids[keep]
+            confidences = confidences[keep]
+
+        else:
+            result = mmdet.apis.inference_mot(model=model, img=frame, frame_id=frame_id, video_len=video_length)
+            # MMDet uses a custom data structure to store the results
+            bboxes = result.video_data_samples[0].pred_track_instances.bboxes.cpu().numpy()
+            track_ids = result.video_data_samples[0].pred_track_instances.instances_id
+            confidences = result.video_data_samples[0].pred_track_instances.scores
 
         assert len(bboxes) == len(track_ids) == len(confidences)
 

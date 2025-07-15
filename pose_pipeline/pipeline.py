@@ -493,6 +493,7 @@ class TrackingBboxMethodLookup(dj.Lookup):
         {"tracking_method": 7, "tracking_method_name": "MMTrack_qdtrack"},
         {"tracking_method": 8, "tracking_method_name": "MMDet_deepsort"},
         {"tracking_method": 9, "tracking_method_name": "MMDet_qdtrack"},
+        {"tracking_method": 10, "tracking_method_name": "MMDet_rtmdet"},
     ]
 
 
@@ -546,6 +547,12 @@ class TrackingBbox(dj.Computed):
             from pose_pipeline.wrappers.mmdet import mmdet_bounding_boxes
 
             tracks = mmdet_bounding_boxes(video, "qdtrack")
+            key["tracks"] = tracks
+        
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMDet_rtmdet":
+            from pose_pipeline.wrappers.mmdet import mmdet_bounding_boxes
+
+            tracks = mmdet_bounding_boxes(video, "rtmdet")
             key["tracks"] = tracks
 
         elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "MMTrack_bytetrack":
@@ -837,7 +844,6 @@ class BottomUpBridgingPerson(dj.Computed):
     """
 
     def make(self, key):
-        from pose_pipeline.utils.keypoint_matching import compute_iou
         from pose_pipeline.wrappers.bridging import noise_to_conf
 
         bbox, present = (PersonBbox & key).fetch1("bbox", "present")
@@ -845,6 +851,9 @@ class BottomUpBridgingPerson(dj.Computed):
             "boxes", "keypoints2d", "keypoints3d", "keypoint_noise"
         )
 
+        # Match BottomUpBridging bboxes to PersonBbox bboxes
+        from pose_pipeline.utils.keypoint_matching import compute_iou
+        
         def match_bbox(bbox1, bbox2, thresh=0.25):
             iou = compute_iou(bbox1[:, :4], bbox2[None, ...])
             idx = np.argmax(iou)
@@ -1470,6 +1479,7 @@ class LiftingPerson(dj.Computed):
     keypoints_valid    : longblob
     """
 
+
     def make(self, key):
 
         if (LiftingMethodLookup & key).fetch1("lifting_method_name") == "RIE":
@@ -1504,6 +1514,7 @@ class LiftingPerson(dj.Computed):
             # not capture this
             keypoints3d = keypoints_filter_clipped_image(key, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :3], "keypoints_valid": keypoints3d[:, :, -1] > 0.5}
+
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_bml_movi_87":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image,keypoints_filter_clipped_image3d
@@ -1522,6 +1533,9 @@ class LiftingPerson(dj.Computed):
             boxes, keypoints2d, keypoints3d, keypoint_noise = (BottomUpBridging & key).fetch1(
             "boxes", "keypoints2d", "keypoints3d", "keypoint_noise"
             )
+
+            # Match BottomUpBridging bboxes to PersonBbox bboxes
+
             def match_bbox(bbox1, bbox2, thresh=0.25):
                 iou = compute_iou(bbox1[:, :4], bbox2[None, ...])
                 idx = np.argmax(iou)
@@ -1536,7 +1550,6 @@ class LiftingPerson(dj.Computed):
             keypoint_noise = np.array([k[i] if i is not None else np.zeros((580,)) for k, i in zip(keypoint_noise, idx)])
             conf = noise_to_conf(keypoint_noise[:,bml_inds],half_val = 30, sharpness = 10)
 
-
             keypoints3d = (BottomUpBridgingPerson & key).fetch1("keypoints3d")
             keypoints3d = np.array(filter_skeleton(keypoints3d, "bml_movi_87"))
             keypoints3d[:,:, -1] = conf
@@ -1546,6 +1559,7 @@ class LiftingPerson(dj.Computed):
             # not capture this
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
+
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_smpl+head_30":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image,keypoints_filter_clipped_image3d
@@ -1557,6 +1571,8 @@ class LiftingPerson(dj.Computed):
             boxes, keypoints2d, keypoints3d, keypoint_noise = (BottomUpBridging & key).fetch1(
                 "boxes", "keypoints2d", "keypoints3d", "keypoint_noise"
             )
+
+            # Match BottomUpBridging bboxes to PersonBbox bboxes
 
             def match_bbox(bbox1, bbox2, thresh=0.25):
                 iou = compute_iou(bbox1[:, :4], bbox2[None, ...])
@@ -1572,7 +1588,6 @@ class LiftingPerson(dj.Computed):
             keypoint_noise = np.array([k[i] if i is not None else np.zeros((580,)) for k, i in zip(keypoint_noise, idx)])
             smpl_inds = np.array([ 23,   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  76,  89,90,  91,  92, 105])
             conf = noise_to_conf(keypoint_noise[:,smpl_inds],half_val = 30, sharpness = 10)
-            
 
             keypoints3d = (BottomUpBridgingPerson & key).fetch1("keypoints3d")
             keypoints3d = np.array(filter_skeleton(keypoints3d, "smpl+head_30"))
@@ -1583,6 +1598,7 @@ class LiftingPerson(dj.Computed):
             # not capture this
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
+
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image,keypoints_filter_clipped_image3d
@@ -1594,6 +1610,8 @@ class LiftingPerson(dj.Computed):
             boxes, keypoints2d, keypoints3d, keypoint_noise = (BottomUpBridging & key).fetch1(
                 "boxes", "keypoints2d", "keypoints3d", "keypoint_noise"
             )
+
+            # Match BottomUpBridging bboxes to PersonBbox bboxes
 
             def match_bbox(bbox1, bbox2, thresh=0.25):
                 iou = compute_iou(bbox1[:, :4], bbox2[None, ...])
@@ -1608,12 +1626,11 @@ class LiftingPerson(dj.Computed):
 
             keypoint_noise = np.array([k[i] if i is not None else np.zeros((580,)) for k, i in zip(keypoint_noise, idx)])
             smpl_inds = np.array([179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191,
-                                  192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204,
-                                  205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217,
-                                  218, 219, 220])
+                                192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204,
+                                205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217,
+                                218, 219, 220])
             conf = noise_to_conf(keypoint_noise[:,smpl_inds],half_val = 30, sharpness = 10)
             
-
             keypoints3d = (BottomUpBridgingPerson & key).fetch1("keypoints3d")
             keypoints3d = np.array(filter_skeleton(keypoints3d, "smplx_42"))
             keypoints3d[:,:, -1] = conf
@@ -1623,6 +1640,7 @@ class LiftingPerson(dj.Computed):
             # not capture this
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
+            
         else:
             raise Exception(f"Method not implemented {key}")
 
