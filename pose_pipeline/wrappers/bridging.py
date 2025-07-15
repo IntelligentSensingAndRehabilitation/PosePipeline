@@ -142,6 +142,76 @@ def bridging_formats_bottom_up(key, model=None, skeleton=""):
     return {"boxes": boxes, "keypoints2d": keypoints2d, "keypoints3d": keypoints3d, "keypoint_noise": keypoint_noises}
 
 
+# Bridging with focused keypoint detection using external bounding boxes
+def bridging_formats_with_external_bbox(key, external_bboxes, bbox_present, model=None, skeleton=""):
+    """
+    Run MeTRAbs pose estimation using externally provided bounding boxes for each frame.
+    Args:
+        key: DataJoint key for the video.
+        external_bboxes: np.ndarray, shape (num_frames, 4), each bbox as [x, y, w, h]
+        bbox_present: np.ndarray, shape (num_frames,), boolean array indicating if bbox is present for each frame
+        model: Optionally provide a loaded MeTRAbs model.
+        skeleton: Skeleton type for the model.
+    Returns:
+        dict with keys: boxes, keypoints2d, keypoints3d, keypoint_noise
+    """
+
+    # Get MeTRAbs model if not provided
+    if model is None:
+        model = get_model()
+
+    from tqdm import tqdm
+
+    video = Video.get_robust_reader(key, return_cap=False)
+    cap = cv2.VideoCapture(video)
+    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    boxes = []
+    keypoints2d = []
+    keypoints3d = []
+    keypoint_noises = []
+
+    # Iterate through each frame
+    for frame_idx in tqdm(range(video_length)):
+
+        # Should match the length of identified person tracks
+        ret, frame = cap.read()
+        assert ret and frame is not None
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # If no bounding box is present, append empty arrays (make sure they match the expected shape)
+        if not bbox_present[frame_idx]:     
+            boxes.append(np.zeros((0, 4)))
+            keypoints2d.append(np.zeros((1, model.per_skeleton_indices[skeleton].shape[0], 2)))
+            keypoints3d.append(np.zeros((1, model.per_skeleton_indices[skeleton].shape[0], 3)))
+            keypoint_noises.append(np.zeros((1, model.per_skeleton_indices[skeleton].shape[0])))
+            continue
+        
+        # Convert bbox to Tensor format
+        bbox = tf.convert_to_tensor([external_bboxes[frame_idx]], dtype=tf.float32)
+
+        # Run MeTRAbs estimate_poses with the external bounding box
+        # pred is a dictionary with keys: "poses2d", "poses3d", "bbox", "bbox_used"
+        pred = model.estimate_poses(frame, bbox, skeleton=skeleton, num_aug=10, average_aug=False)
+
+        # Append results
+        boxes.append(bbox)
+        keypoints2d.append(np.mean(pred["poses2d"].numpy(), axis=1))
+        keypoints3d.append(np.mean(pred["poses3d"].numpy(), axis=1))
+        keypoint_noises.append(augmentation_noise(pred["poses3d"].numpy()))
+
+    # Convert to arrays and reshape
+    keypoints2d = np.squeeze(np.array(keypoints2d), axis=1)             # shape: (N, J, 2)
+    keypoints3d = np.squeeze(np.array(keypoints3d), axis=1)             # shape: (N, J, 3)
+    keypoint_noises = np.squeeze(np.array(keypoint_noises), axis=1)     # shape: (N, J)
+    
+    cap.release()
+    os.remove(video)
+
+    return {"boxes": boxes, "keypoints2d": keypoints2d, "keypoints3d": keypoints3d, "keypoint_noise": keypoint_noises}
+
+
 def get_overlay_callback(boxes, poses2d, joint_edges=None):
     def overlay_callback(image, idx):
         image = image.copy()
