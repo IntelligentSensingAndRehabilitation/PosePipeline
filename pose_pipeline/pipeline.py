@@ -1012,6 +1012,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 15, "top_down_method_name": "MMPose_RTMPose_Coco_Wholebody"},
         {"top_down_method": 16, "top_down_method_name": "MMPose_RTMPose_Cocktail14"},
         {"top_down_method": 17, "top_down_method_name": "MMPose_VitPose_H"},
+        {"top_down_method": 18, "top_down_method_name": "MMPose_RTMPose_Face"},
     ]
 
 
@@ -1127,6 +1128,10 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = results
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
+        elif method_name == "MMPose_RTMPose_Face":
+            from .wrappers.mmpose import mmpose_top_down_person
+
+            key["keypoints"] = mmpose_top_down_person(key, "RTMPose_Face")
 
         elif method_name == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
@@ -1191,6 +1196,25 @@ class TopDownPerson(dj.Computed):
                 "Right Big Toe",
                 "Right Little Toe",
                 "Right Heel",
+            ]
+
+        elif method == "MMPose_RTMPose_Face":
+            # 68 facial landmarks (standard face keypoints)
+            return [
+                # Jaw line (0-16)
+                *[f"jaw_{i}" for i in range(17)],
+                # Right eyebrow (17-21)
+                *[f"right_eyebrow_{i}" for i in range(5)],
+                # Left eyebrow (22-26)
+                *[f"left_eyebrow_{i}" for i in range(5)],
+                # Nose (27-35)
+                *[f"nose_{i}" for i in range(9)],
+                # Right eye (36-41)
+                *[f"right_eye_{i}" for i in range(6)],
+                # Left eye (42-47)
+                *[f"left_eye_{i}" for i in range(6)],
+                # Mouth (48-67)
+                *[f"mouth_{i}" for i in range(20)]
             ]
         else:
             from .wrappers.mmpose import mmpose_joint_dictionary

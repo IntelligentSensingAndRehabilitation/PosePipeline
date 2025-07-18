@@ -138,6 +138,24 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
         pose_ckpt = os.path.join(destination, pose_checkpoint)
 
         num_keypoints = 17
+
+    elif method == 'RTMPose_Face':
+
+        # Define the model config and checkpoint files
+        pose_config_id = "rtmpose-m_8xb32-60e_coco-wholebody-face-256x256"
+        pose_checkpoint = "rtmpose-m_simcc-face6_pt-in1k_60e-256x256-0e5b8b12_20230228.pth"
+
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_ckpt = os.path.join(destination, pose_checkpoint)
+
+        num_keypoints = 68
     
     print(f"processing {key}")
     bboxes = (PersonBbox & key).fetch1("bbox")
