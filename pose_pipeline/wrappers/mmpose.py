@@ -143,7 +143,7 @@ def mmpose_top_down_person(key, method='HRNet_W48_COCO'):
 
         # Define the model config and checkpoint files
         pose_config_id = "rtmpose-m_8xb32-60e_coco-wholebody-face-256x256"
-        pose_checkpoint = "rtmpose-m_simcc-face6_pt-in1k_60e-256x256-0e5b8b12_20230228.pth"
+        pose_checkpoint = "rtmpose-m_simcc-coco-wholebody-face_pt-aic-coco_60e-256x256-5bda63ce.pth"
 
         # define the destination folder
         destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")

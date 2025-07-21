@@ -1012,7 +1012,6 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 15, "top_down_method_name": "MMPose_RTMPose_Coco_Wholebody"},
         {"top_down_method": 16, "top_down_method_name": "MMPose_RTMPose_Cocktail14"},
         {"top_down_method": 17, "top_down_method_name": "MMPose_VitPose_H"},
-        {"top_down_method": 18, "top_down_method_name": "MMPose_RTMPose_Face"},
     ]
 
 
@@ -1128,10 +1127,7 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = results
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
-        elif method_name == "MMPose_RTMPose_Face":
-            from .wrappers.mmpose import mmpose_top_down_person
 
-            key["keypoints"] = mmpose_top_down_person(key, "RTMPose_Face")
 
         elif method_name == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
@@ -1198,24 +1194,7 @@ class TopDownPerson(dj.Computed):
                 "Right Heel",
             ]
 
-        elif method == "MMPose_RTMPose_Face":
-            # 68 facial landmarks (standard face keypoints)
-            return [
-                # Jaw line (0-16)
-                *[f"jaw_{i}" for i in range(17)],
-                # Right eyebrow (17-21)
-                *[f"right_eyebrow_{i}" for i in range(5)],
-                # Left eyebrow (22-26)
-                *[f"left_eyebrow_{i}" for i in range(5)],
-                # Nose (27-35)
-                *[f"nose_{i}" for i in range(9)],
-                # Right eye (36-41)
-                *[f"right_eye_{i}" for i in range(6)],
-                # Left eye (42-47)
-                *[f"left_eye_{i}" for i in range(6)],
-                # Mouth (48-67)
-                *[f"mouth_{i}" for i in range(20)]
-            ]
+
         else:
             from .wrappers.mmpose import mmpose_joint_dictionary
 
@@ -1437,7 +1416,7 @@ class LiftingPerson(dj.Computed):
             boxes = np.array([b[i] if i is not None else np.zeros((5,)) for b, i in zip(boxes, idx)])
 
             keypoint_noise = np.array([k[i] if i is not None else np.zeros((580,)) for k, i in zip(keypoint_noise, idx)])
-            smpl_inds = np.array([ 23,   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  76,  89,90,  91,  92, 105])
+            smpl_inds = np.array([ 23,   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22, 76,  89,90,  91,  92, 105])
             conf = noise_to_conf(keypoint_noise[:,smpl_inds],half_val = 30, sharpness = 10)
             
 
@@ -2225,3 +2204,169 @@ class HandPoseEstimation(dj.Computed):
         
         
         self.insert1(key)
+
+@schema
+class FaceBboxMethodLookup(dj.Lookup):
+    definition = """
+    detection_method      : int
+    ---
+    detection_method_name : varchar(50)
+    """
+    contents = [
+        {"detection_method": 0, "detection_method_name": "RTMPose_Face"},
+        {"detection_method": 1, "detection_method_name": "TopDown_Wholebody"},
+        {"detection_method": 2, "detection_method_name": "PersonBbox_Wholebody"},
+    ]
+
+@schema
+class FaceBboxMethod(dj.Manual):
+    definition = """
+    -> Video
+    -> FaceBboxMethodLookup
+    ---
+    """
+
+@schema
+class FaceBbox(dj.Computed):
+    definition = """
+    -> FaceBboxMethod
+    ---
+    num_boxes   :   int
+    bboxes      :   longblob
+    """   
+    def make(self, key):
+        if (FaceBboxMethodLookup & key).fetch1("detection_method_name") == "RTMPose_Face":
+            # Using RTMPose face detector
+            try:
+                from pose_pipeline.wrappers.face_bbox import mmpose_face_det
+                num_boxes, bboxes = mmpose_face_det(key=key, method="RTMPose_Face")
+                key["bboxes"] = bboxes
+                key["num_boxes"] = num_boxes
+            except ImportError as e:
+                raise Exception(f"RTMPose_Face detection failed. {str(e).strip()}")
+        elif (FaceBboxMethodLookup & key).fetch1("detection_method_name") == "TopDown_Wholebody":
+            # Using TopDown wholebody keypoints to create face bboxes (use method 1: MMPoseWholebody)
+            from pose_pipeline.wrappers.face_bbox import make_bbox_from_keypoints
+            try:
+                # Use wholebody method (method 1: MMPoseWholebody)
+                keypoints = (TopDownPerson & key & "top_down_method=1").fetch1("keypoints")
+            except:
+                raise Exception("TopDownPerson table does not have wholebody keypoints (method 1: MMPoseWholebody)")
+            bboxes = make_bbox_from_keypoints(keypoints)
+            key["bboxes"] = bboxes
+            key["num_boxes"] = 1  # Typically one face per video
+        elif (FaceBboxMethodLookup & key).fetch1("detection_method_name") == "PersonBbox_Wholebody":
+            # Using PersonBbox wholebody detection to create face bboxes
+            from pose_pipeline.wrappers.face_bbox import make_bbox_from_person_bbox
+            try:
+                person_bboxes = (PersonBbox & key).fetch1("bboxes")
+            except:
+                raise Exception("PersonBbox table does not have person detections")
+            bboxes = make_bbox_from_person_bbox(person_bboxes)
+            key["bboxes"] = bboxes
+            key["num_boxes"] = bboxes.shape[1]  # Number of detected faces
+        else:
+            raise Exception(f"Method not implemented")
+
+        self.insert1(key)
+
+@schema
+class FacePoseEstimationMethodLookup(dj.Lookup):
+    definition = """
+    estimation_method      : int
+    ---
+    estimation_method_name : varchar(50)
+    """
+    contents = [
+        {"estimation_method": 0, "estimation_method_name": "RTMPose_Face"},
+        {"estimation_method": 1, "estimation_method_name": "MediaPipe_Face"},
+        {"estimation_method": 2, "estimation_method_name": "TopDown_Wholebody"},
+    ]
+
+    def landmark_names(self):
+        """Get landmark names for facial keypoints (renamed from joint_names since these are landmarks, not joints)"""
+        method = self.fetch1("estimation_method_name")
+        if method == "RTMPose_Face" or method == "TopDown_Wholebody":
+            # 68 facial landmarks (standard face keypoints)
+            return [
+                # Jaw line (0-16)
+                *[f"jaw_{i}" for i in range(17)],
+                # Right eyebrow (17-21)
+                *[f"right_eyebrow_{i}" for i in range(5)],
+                # Left eyebrow (22-26)
+                *[f"left_eyebrow_{i}" for i in range(5)],
+                # Nose (27-35)
+                *[f"nose_{i}" for i in range(9)],
+                # Right eye (36-41)
+                *[f"right_eye_{i}" for i in range(6)],
+                # Left eye (42-47)
+                *[f"left_eye_{i}" for i in range(6)],
+                # Mouth (48-67)
+                *[f"mouth_{i}" for i in range(20)]
+            ]
+        elif method == "MediaPipe_Face":
+            # MediaPipe face mesh has 468 landmarks
+            return [f"mediapipe_landmark_{i}" for i in range(468)]
+
+@schema
+class FacePoseEstimationMethod(dj.Manual):
+    definition = """
+    -> FaceBbox
+    -> FacePoseEstimationMethodLookup
+    ---
+    """
+
+@schema
+class FacePoseEstimation(dj.Computed):
+    definition = """
+    -> FacePoseEstimationMethod
+    ---
+    keypoints_2d       : longblob  # (time, 68, 3) for facial landmarks
+    """   
+    def make(self, key):
+        if (FacePoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "RTMPose_Face":
+            try:
+                from pose_pipeline.wrappers.face_estimation import mmpose_FPE
+                key["keypoints_2d"] = mmpose_FPE(key, 'RTMPose_Face')
+            except ImportError as e:
+                raise Exception(f"RTMPose_Face estimation failed. {str(e).strip()}")
+        elif (FacePoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "MediaPipe_Face":
+            from pose_pipeline.wrappers.face_estimation import mediapipe_FPE
+            key["keypoints_2d"] = mediapipe_FPE(key)
+        elif (FacePoseEstimationMethodLookup & key).fetch1("estimation_method_name") == "TopDown_Wholebody":
+            # Extract face keypoints from existing wholebody TopDown results
+            from pose_pipeline.wrappers.face_estimation import face_estimation_from_wholebody
+            key["keypoints_2d"] = face_estimation_from_wholebody(key)
+        else:
+            raise Exception(f"Method not implemented")
+        
+        self.insert1(key)
+
+@schema
+class FacePoseEstimationVideo(dj.Computed):
+    definition = """
+    -> FacePoseEstimation
+    -> BlurredVideo
+    ---
+    output_video      : attach@localattach    # datajoint managed video file
+    """   
+    def make(self, key):
+        from pose_pipeline.wrappers.face_estimation import overlay_face_keypoints
+        
+        # Get video and face data
+        video = (BlurredVideo & key).fetch1("output_video")
+        keypoints = (FacePoseEstimation & key).fetch1("keypoints_2d")
+        bboxes = (FaceBbox & key).fetch1("bboxes")
+        
+        fd, out_file_name = tempfile.mkstemp(suffix=".mp4")
+        os.close(fd)
+        
+        # Create overlay video
+        overlay_face_keypoints(video, out_file_name, keypoints, bboxes)
+        
+        key["output_video"] = out_file_name
+        self.insert1(key)
+        
+        # Clean up temporary files
+        os.remove(out_file_name)
+        os.remove(video)

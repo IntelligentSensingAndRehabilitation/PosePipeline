@@ -12,6 +12,7 @@ from .pipeline import CenterHMR, CenterHMRPerson, CenterHMRPersonVideo
 from .pipeline import BottomUpMethodLookup, BottomUpMethod, BottomUpPeople, BottomUpPerson, BottomUpVideo
 from .pipeline import TopDownMethodLookup, TopDownMethod, TopDownPerson, TopDownPersonVideo
 from .pipeline import HandBboxMethodLookup,HandBboxMethod, HandBbox, HandPoseEstimation, HandPoseEstimationMethod, HandPoseEstimationMethodLookup
+from .pipeline import FaceBboxMethodLookup, FaceBboxMethod, FaceBbox, FacePoseEstimation, FacePoseEstimationMethod, FacePoseEstimationMethodLookup, FacePoseEstimationVideo
 from .pipeline import LiftingMethodLookup, LiftingMethod, LiftingPerson, LiftingPersonVideo
 from .pipeline import SMPLMethodLookup, SMPLMethod, SMPLPerson, SMPLPersonVideo
 
