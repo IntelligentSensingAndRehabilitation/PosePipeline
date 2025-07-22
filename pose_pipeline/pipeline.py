@@ -2251,10 +2251,10 @@ class FaceBbox(dj.Computed):
                 # Use wholebody method (method 1: MMPoseWholebody)
                 keypoints = (TopDownPerson & key & "top_down_method=1").fetch1("keypoints")
             except:
-                raise Exception("TopDownPerson table does not have wholebody keypoints (method 1: MMPoseWholebody)")
+                raise Exception("TopDownPerson table does not have wholebody keypoints (method 1: MMPoseWholebody). Cannot use TopDown_Wholebody face detection without existing wholebody pose data.")
             bboxes = make_bbox_from_keypoints(keypoints)
             key["bboxes"] = bboxes
-            key["num_boxes"] = 1  # Typically one face per video
+            key["num_boxes"] = bboxes.shape[1] if len(bboxes.shape) > 2 else 1
         elif (FaceBboxMethodLookup & key).fetch1("detection_method_name") == "PersonBbox_Wholebody":
             # Using PersonBbox wholebody detection to create face bboxes
             from pose_pipeline.wrappers.face_bbox import make_bbox_from_person_bbox
@@ -2287,7 +2287,7 @@ class FacePoseEstimationMethodLookup(dj.Lookup):
         """Get landmark names for facial keypoints (renamed from joint_names since these are landmarks, not joints)"""
         method = self.fetch1("estimation_method_name")
         if method == "RTMPose_Face" or method == "TopDown_Wholebody":
-            # 68 facial landmarks (standard face keypoints)
+            # 68 facial landmarks (standard face keypoints from COCOWholeBody format)
             return [
                 # Jaw line (0-16)
                 *[f"jaw_{i}" for i in range(17)],

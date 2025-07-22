@@ -50,7 +50,7 @@ Quick install: pip install mmpose mmdet mmcv
     
     from pose_pipeline.pipeline import Video
     from pose_pipeline.utils.video import get_frames_cv2
-    from pose_pipeline.env import MODEL_DATA_DIR
+    from pose_pipeline import MODEL_DATA_DIR
 
     # Get video path
     video_path = (Video & key).fetch1("video_path")

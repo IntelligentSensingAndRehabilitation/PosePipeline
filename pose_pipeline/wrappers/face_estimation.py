@@ -33,7 +33,7 @@ Quick install: pip install mmpose mmdet mmcv
         """
         raise ImportError(error_msg)
     
-    from pose_pipeline.env import MODEL_DATA_DIR
+    from pose_pipeline import MODEL_DATA_DIR
     
     # Model configuration based on method - use your existing configs
     if method == "RTMPose_Face":
@@ -114,13 +114,13 @@ def face_estimation_from_wholebody(key: dict, face_indices: list = None) -> np.n
     from pose_pipeline.pipeline import TopDownPerson
     
     if face_indices is None:
-        # Default face landmark indices for MMPose wholebody (HALPE format)
-        # These correspond to the face landmarks in HALPE
-        face_indices = list(range(26, 94))  # Face landmarks in HALPE (68 landmarks)
+        # Default face landmark indices for MMPose COCOWholeBody format (method 1: MMPoseWholebody)
+        # Face keypoints are indices 23-90 in COCOWholeBody format (68 facial landmarks)
+        face_indices = list(range(23, 91))
     
     try:
-        # Get wholebody keypoints (assuming MMPoseHalpe method)
-        wholebody_keypoints = (TopDownPerson & key & "top_down_method=2").fetch1("keypoints")
+        # Get wholebody keypoints (using MMPoseWholebody method 1)
+        wholebody_keypoints = (TopDownPerson & key & "top_down_method=1").fetch1("keypoints")
         
         # Extract face keypoints
         face_keypoints = wholebody_keypoints[:, face_indices, :]
@@ -128,7 +128,7 @@ def face_estimation_from_wholebody(key: dict, face_indices: list = None) -> np.n
         return face_keypoints
         
     except Exception as e:
-        raise Exception(f"Could not extract face keypoints from wholebody estimation: {e}")
+        raise Exception(f"Could not extract face keypoints from wholebody estimation (method 1: MMPoseWholebody): {e}")
 
 
 def overlay_face_keypoints(video, output_file, keypoints, bboxes):
