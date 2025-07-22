@@ -2284,7 +2284,7 @@ class FacePoseEstimationMethodLookup(dj.Lookup):
     ]
 
     def landmark_names(self):
-        """Get landmark names for facial keypoints (renamed from joint_names since these are landmarks, not joints)"""
+        """Get landmark names for facial keypoints"""
         method = self.fetch1("estimation_method_name")
         if method == "RTMPose_Face" or method == "TopDown_Wholebody":
             # 68 facial landmarks (standard face keypoints from COCOWholeBody format)
