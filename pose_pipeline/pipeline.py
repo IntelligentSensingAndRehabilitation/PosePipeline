@@ -1024,7 +1024,8 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 18, "top_down_method_name": "Bridging_ExtDetector_COCO_25"},
         {"top_down_method": 19, "top_down_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"top_down_method": 20, "top_down_method_name": "Bridging_ExtDetector_smpl+head_30"},
-        {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"}
+        {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"},
+        {"top_down_method": 100, "top_down_method_name": "Hiera_Movi87_1L3pref5"},
     ]
 
 
@@ -1273,6 +1274,15 @@ class TopDownPerson(dj.Computed):
 
             part_key = key.copy()
             results, scores, visibility = mmpose_top_down_person(key, "MMPose_VitPose_H")
+            key["keypoints"] = results
+            part_key["keypoint_scores"] = scores
+            part_key["keypoints_visibile"] = visibility
+        
+        elif method_name == "Hiera_Movi87_1L3pref5":
+            from .wrappers.hiera_movi87 import mmpose_custom_top_down
+
+            part_key = key.copy()
+            results, scores, visibility = mmpose_custom_top_down(key, "Hiera_Movi87_1L3pref5")
             key["keypoints"] = results
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
