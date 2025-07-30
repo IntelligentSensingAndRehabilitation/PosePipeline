@@ -17,11 +17,15 @@ def normalize_scores(scores):
 
 def mmpose_custom_top_down(key, method='HRNet_W48_COCO'):
 
+    import video_foundational_model
     from mmpose.apis import init_model as init_pose_estimator
     from mmpose.apis import inference_topdown
     from tqdm import tqdm
 
     from pose_pipeline import MODEL_DATA_DIR
+
+    from mmpose.utils import register_all_modules
+    register_all_modules()
 
     if method == 'Hiera_Movi87_1L3pref5':
         pose_cfg = "/home/vscode/workspace/VideoFoundationalModel/video_foundational_model/configs/hiera_movi87.py"
