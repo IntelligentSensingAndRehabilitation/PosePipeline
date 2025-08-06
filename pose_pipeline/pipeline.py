@@ -526,9 +526,9 @@ class TrackingBbox(dj.Computed):
             tracks = tracking_bounding_boxes(video)
             key["tracks"] = tracks
 
-        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") in "YOLOv11":
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "YOLOv11":
             from pose_pipeline.wrappers.yolov11.model import yolov11_bounding_boxes
-
+            
             tracks = yolov11_bounding_boxes(video)
             key["tracks"] = tracks
 

@@ -12,15 +12,16 @@ def yolov11_bounding_boxes(file_path,outfile=None):
     """
     
     # ------------Load fine-tuned model----------------
-    model_path = os.path.join('mnt','lucinda', 'weights', 'yolov11_xl_fine_tuned.pt')
+    model_path = f"/mnt/lucinda/yolov11/weights/yolov11_xl_fine_tuned.pt"
     model = YOLO(model_path)
 
     # --------------- Run Tracking --------------------
     tracking_results = model.track(
         source=file_path,
         tracker="bytetrack.yaml",  # or "strongsort.yaml"
-        conf=0.5,  # confidence threshold
+        conf=0.4,  # confidence threshold
         device=1,  # check this if you have a GPU
+        #stream=True
         #save=outfile is not None,  # save output if outfile is specified
         )
 
@@ -28,10 +29,11 @@ def yolov11_bounding_boxes(file_path,outfile=None):
     tracks = []
     for result in tracking_results:
         frame_tracks = []
-        print(f"Frame Number: {frame}")
-        frame +=1
         if result.boxes is not None:
             for box in result.boxes:
+                if box.id is None:
+                        print("Warning: No Track id. Skipping box")
+                        continue
                 track_id = int(box.id.item())
                 tlbr = box.xyxy[0].cpu().numpy().astype(np.float32)
                 tlhw = box.xywh[0].cpu().numpy().astype(np.float32)
