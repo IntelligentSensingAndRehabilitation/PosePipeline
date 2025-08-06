@@ -494,6 +494,7 @@ class TrackingBboxMethodLookup(dj.Lookup):
         {"tracking_method": 8, "tracking_method_name": "MMDet_deepsort"},
         {"tracking_method": 9, "tracking_method_name": "MMDet_qdtrack"},
         {"tracking_method": 10, "tracking_method_name": "MMDet_rtmdet"},
+        {"tracking_method":40, "tracking_method_name":"YOLOv11"}
     ]
 
 
@@ -523,6 +524,12 @@ class TrackingBbox(dj.Computed):
             from pose_pipeline.wrappers.deep_sort_yolov4.parser import tracking_bounding_boxes
 
             tracks = tracking_bounding_boxes(video)
+            key["tracks"] = tracks
+
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") in "YOLOv11":
+            from pose_pipeline.wrappers.yolov11.model import yolov11_bounding_boxes
+
+            tracks = yolov11_bounding_boxes(video)
             key["tracks"] = tracks
 
         elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") in "MMTrack_tracktor":
