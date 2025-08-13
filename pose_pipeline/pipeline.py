@@ -2123,8 +2123,9 @@ class HandPoseEstimationMethodLookup(dj.Lookup):
         {"estimation_method": 4, "estimation_method_name": "HRNet_udp"},
     ]
 
-    def joint_names(self):
-        method = self.fetch1("estimation_method_name")
+    def joint_names(self,method=None):
+        if method is None:
+            method = self.fetch1("estimation_method_name")
         if (
             method == "RTMPoseHand5"
             or method == "RTMPoseCOCO"
