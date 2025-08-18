@@ -8,7 +8,7 @@ def compress(fn, bitrate=5):
     import subprocess
 
     fd, temp = tempfile.mkstemp(suffix=".mp4")
-    subprocess.run(["ffmpeg", "-y", "-i", fn, "-c:v", "libx264", "-b:v", f"{bitrate}M", temp])
+    subprocess.run(["ffmpeg", "-y", "-i", fn, "-c:v", "libx264", "-b:v", f"{bitrate}M", "-vsync", "vfr", temp])
     os.close(fd)
     return temp
 
