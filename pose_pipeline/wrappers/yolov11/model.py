@@ -20,8 +20,8 @@ def yolov11_bounding_boxes(file_path,outfile=None):
         source=file_path,
         tracker="bytetrack.yaml",  # or "strongsort.yaml"
         conf=0.4,  # confidence threshold
-        device=1,  # check this if you have a GPU
-        #stream=True
+        device=0,  # check this if you have a GPU
+        stream=True
         #save=outfile is not None,  # save output if outfile is specified
         )
 
