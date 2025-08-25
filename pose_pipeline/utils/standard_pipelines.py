@@ -351,23 +351,24 @@ def hand_estimation_pipeline(
     Args:
         keys (dict)                  : key or keys to compute
         detection_method_name (str)  : detection method of HandBbox to use to identify person
-        estimation_method_name (str)  : estimation method of HandPoseEstimation to use to identify person
+        estimation_method_name (str) : estimation method of HandPoseEstimation to use to identify person
         reserve_jobs (bool)          : whether to reserve jobs or not
     """
 
     for key in keys:
-        hand_key = key.copy()
+        hand_key = (Video & key).fetch1("KEY")
         bbox_method = (HandBboxMethodLookup & f'detection_method_name="{detection_method_name}"').fetch1(
             "detection_method"
         )
         hand_key['detection_method'] = bbox_method
+        
         # compute the person bbox (requires a method to have inserted the valid bbox)
-        HandBboxMethod.insert(hand_key, skip_duplicates=True, ignore_extra_fields=True)
+        HandBboxMethod.insert([hand_key], skip_duplicates=True, ignore_extra_fields=True)
 
-        HandBbox.populate(hand_key,reserve_jobs=reserve_jobs)
-
+        print('Performing Hand BBox and Estimation for', hand_key)
+        HandBbox.populate([hand_key],reserve_jobs=reserve_jobs)
         estimation_method = (HandPoseEstimationMethodLookup & f'estimation_method_name="{estimation_method_name}"').fetch1("estimation_method")
         hand_key['estimation_method'] = estimation_method
-        HandPoseEstimationMethod.insert(hand_key, skip_duplicates=True, ignore_extra_fields=True)
+        HandPoseEstimationMethod.insert([hand_key], skip_duplicates=True, ignore_extra_fields=True)
 
-        HandPoseEstimation.populate(hand_key, reserve_jobs=reserve_jobs)
+        HandPoseEstimation.populate([hand_key], reserve_jobs=reserve_jobs)

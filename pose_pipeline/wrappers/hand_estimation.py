@@ -19,6 +19,8 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
 
     if method == "RTMPoseHand5":
         # Define the model config and checkpoint files
+        # pose_config_id = "https://github.com/open-mmlab/mmpose/blob/main/configs/hand_2d_keypoint/rtmpose/hand5/rtmpose-m_8xb256-210e_hand5-256x256.py"
+
         pose_config_id = "rtmpose-m_8xb256-210e_hand5-256x256"
         pose_checkpoint = (
             "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth"
@@ -27,8 +29,7 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
         # define the destination folder
         destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
 
-        # download the model and checkpoints
-        download(package, [pose_config_id], dest_root=destination)
+        download(package, [pose_config_id], dest_root=destination,check_certificate=False)
 
         # define the model config and checkpoints paths
         pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
