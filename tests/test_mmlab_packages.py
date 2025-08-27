@@ -22,7 +22,7 @@ def test_mmpretrain():
 
     input_image_path = os.path.join(base_path, "pretrain_demo.jpg")
     # Base path is relative to the location of this script
-    destination = os.path.join(base_path, 'mmpretrain/')
+    output_image_path = os.path.join(base_path, 'mmpretrain/')
 
     model = "resnet18_8xb32_in1k"
 
@@ -33,11 +33,11 @@ def test_mmpretrain():
             model, pretrained=pretrained)
     except ValueError:
         raise ValueError(
-            f'Unavailable model "{model}", you can specify find a model '
+            f'Unavailable model "{model}", you can specify a model '
             'name or a config file or find a model name from '
             'https://mmpretrain.readthedocs.io/en/latest/modelzoo_statistics.html#all-checkpoints'  # noqa: E501
         )
-    result = inferencer(input_image_path, show=False, show_dir=destination)[0]
+    result = inferencer(input_image_path, show=False, show_dir=output_image_path)[0]
     # show the results
     result.pop('pred_scores')  # pred_scores is too verbose for a demo.
     print_json(dump(result, file_format='json', indent=4))
