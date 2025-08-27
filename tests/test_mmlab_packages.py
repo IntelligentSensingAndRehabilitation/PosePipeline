@@ -14,6 +14,34 @@ def test_mmengine():
 
     print(f"mmengine version: {mmengine.__version__}")
 
+def test_mmpretrain():
+    from mmengine.fileio import dump
+    from rich import print_json
+
+    from mmpretrain.apis import ImageClassificationInferencer
+
+    input_image_path = os.path.join(base_path, "pretrain_demo.jpg")
+    # Base path is relative to the location of this script
+    output_image_path = os.path.join(base_path, 'mmpretrain/')
+
+    model = "resnet18_8xb32_in1k"
+
+    # build the model from a config file and a checkpoint file
+    try:
+        pretrained = True
+        inferencer = ImageClassificationInferencer(
+            model, pretrained=pretrained)
+    except ValueError:
+        raise ValueError(
+            f'Unavailable model "{model}", you can specify a model '
+            'name or a config file or find a model name from '
+            'https://mmpretrain.readthedocs.io/en/latest/modelzoo_statistics.html#all-checkpoints'  # noqa: E501
+        )
+    result = inferencer(input_image_path, show=False, show_dir=output_image_path)[0]
+    # show the results
+    result.pop('pred_scores')  # pred_scores is too verbose for a demo.
+    print_json(dump(result, file_format='json', indent=4))
+
 def test_mmcv():
     # Copied the test from mmcv github
     # https://github.com/open-mmlab/mmcv/blob/main/.dev_scripts/check_installation.py
