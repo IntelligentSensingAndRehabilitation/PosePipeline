@@ -29,7 +29,7 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
         # define the destination folder
         destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
 
-        download(package, [pose_config_id], dest_root=destination,check_certificate=False)
+        download(package, [pose_config_id], dest_root=destination)
 
         # define the model config and checkpoints paths
         pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
