@@ -338,3 +338,37 @@ def blur_videos(keys: Union[Dict, List[Dict]], reserve_jobs: bool = False):
         # handle the case where some of the jobs where reserved
         if len(BottomUpPeople & key) > 0:
             BlurredVideo.populate(key, reserve_jobs=reserve_jobs)
+
+def hand_estimation_pipeline(
+    keys: Union[Dict, List[Dict]],
+    detection_method_name: str = "MoviTopDown",
+    estimation_method_name: str = "RTMPoseHand5",
+    reserve_jobs: bool = False,
+):
+    """
+    Run pipeline on a video to estimate hand keypoints.
+
+    Args:
+        keys (dict)                  : key or keys to compute
+        detection_method_name (str)  : detection method of HandBbox to use to identify person
+        estimation_method_name (str) : estimation method of HandPoseEstimation to use to identify person
+        reserve_jobs (bool)          : whether to reserve jobs or not
+    """
+
+    for key in keys:
+        hand_key = (Video & key).fetch1("KEY")
+        bbox_method = (HandBboxMethodLookup & f'detection_method_name="{detection_method_name}"').fetch1(
+            "detection_method"
+        )
+        hand_key['detection_method'] = bbox_method
+        
+        # compute the person bbox (requires a method to have inserted the valid bbox)
+        HandBboxMethod.insert([hand_key], skip_duplicates=True, ignore_extra_fields=True)
+
+        print('Performing Hand BBox and Estimation for', hand_key)
+        HandBbox.populate([hand_key],reserve_jobs=reserve_jobs)
+        estimation_method = (HandPoseEstimationMethodLookup & f'estimation_method_name="{estimation_method_name}"').fetch1("estimation_method")
+        hand_key['estimation_method'] = estimation_method
+        HandPoseEstimationMethod.insert([hand_key], skip_duplicates=True, ignore_extra_fields=True)
+
+        HandPoseEstimation.populate([hand_key], reserve_jobs=reserve_jobs)
