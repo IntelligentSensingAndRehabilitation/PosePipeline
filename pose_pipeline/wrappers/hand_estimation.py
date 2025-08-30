@@ -93,6 +93,19 @@ def mmpose_HPE(key, method="RTMPoseHand5"):
         # define the model config and checkpoints paths
         pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
         pose_model_ckpt = os.path.join(destination, pose_checkpoint)
+    elif method == "InterHand3d":
+        # Define the model config and checkpoint files
+        pose_config_id = "internet_res50_4xb16-20e_interhand3d-256x256"
+        pose_checkpoint = "res50_intehand3dv1.0_all_256x256-42b7f2ac_20210702.pth"
+        # define the destination folder
+        destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
+
+        # download the model and checkpoints
+        download(package, [pose_config_id], dest_root=destination)
+
+        # define the model config and checkpoints paths
+        pose_model_cfg = os.path.join(destination, f"{pose_config_id}.py")
+        pose_model_ckpt = os.path.join(destination, pose_checkpoint)
 
     device = "cuda"
     model = init_model(pose_model_cfg, pose_model_ckpt, device=device)

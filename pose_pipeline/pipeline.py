@@ -2121,6 +2121,7 @@ class HandPoseEstimationMethodLookup(dj.Lookup):
         {"estimation_method": 2, "estimation_method_name": "freihand"},
         {"estimation_method": 3, "estimation_method_name": "HRNet_dark"},
         {"estimation_method": 4, "estimation_method_name": "HRNet_udp"},
+        {"estimation_method": 5, "estimation_method_name": "InterHand3d"},
     ]
 
     def joint_names(self,method=None):
@@ -2277,7 +2278,15 @@ class HandPoseEstimation(dj.Computed):
         ) == "HRNet_udp":
             from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
 
-            key["keypoints_2d"] = mmpose_HPE(key, "HRNet_udp")
+            key["keypoints_2d"] = mmpose_HPE(key, "HRNet_udp")        
+            
+        elif (HandPoseEstimationMethodLookup & key).fetch1(
+            "estimation_method_name"
+        ) == "InterHand3d":
+            from pose_pipeline.wrappers.hand_estimation import mmpose_HPE
+
+            key["keypoints_2d"] = mmpose_HPE(key, "InterHand3d")
+            
         elif (HandPoseEstimationMethodLookup & key).fetch1(
             "estimation_method_name"
         ) == "Halpe":
