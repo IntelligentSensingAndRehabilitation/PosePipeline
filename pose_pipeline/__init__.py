@@ -14,6 +14,7 @@ from .pipeline import TopDownMethodLookup, TopDownMethod, TopDownPerson, TopDown
 from .pipeline import HandBboxMethodLookup,HandBboxMethod, HandBbox, HandPoseEstimation, HandPoseEstimationMethod, HandPoseEstimationMethodLookup
 from .pipeline import LiftingMethodLookup, LiftingMethod, LiftingPerson, LiftingPersonVideo
 from .pipeline import SMPLMethodLookup, SMPLMethod, SMPLPerson, SMPLPersonVideo
+from .pipeline import SAM3DBodyMethodLookup, SAM3DBodyMethod, SAM3DBody
 
 
 from .env import add_path, set_environmental_variables, pytorch_memory_limit, tensorflow_memory_limit
