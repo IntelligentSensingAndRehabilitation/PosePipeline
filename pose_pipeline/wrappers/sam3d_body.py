@@ -31,11 +31,22 @@ def load_sam3d_body(repo_id="facebook/sam-3d-body-dinov3", device="cuda"):
     if cache_key in _sam3d_model_cache:
         return _sam3d_model_cache[cache_key]
 
-    from sam_3d_body import load_sam_3d_body_hf, SAM3DBodyEstimator
+    # Use lower-level functions to properly pass device parameter
+    # (load_sam_3d_body_hf doesn't forward kwargs to load_sam_3d_body)
+    from sam_3d_body import load_sam_3d_body, SAM3DBodyEstimator
+    from sam_3d_body.build_models import _hf_download
 
     print(f"Loading SAM-3D-Body model from {repo_id}...")
-    model, model_cfg = load_sam_3d_body_hf(repo_id)
-    model = model.to(device)
+
+    # Download checkpoint from HuggingFace
+    ckpt_path, mhr_path = _hf_download(repo_id)
+
+    # Load model with explicit device
+    model, model_cfg = load_sam_3d_body(
+        checkpoint_path=ckpt_path,
+        mhr_path=mhr_path,
+        device=device
+    )
 
     # Create estimator without detector (we'll provide bboxes)
     estimator = SAM3DBodyEstimator(
@@ -236,24 +247,18 @@ def process_sam3d_body(key, repo_id="facebook/sam-3d-body-dinov3"):
     return final_results
 
 
-def get_sam3d_callback(key, alpha=0.8):
+def get_sam3d_callback(key, mesh_color=(0.65098039, 0.74117647, 0.85882353)):
     """
     Get visualization callback for SAM-3D-Body mesh overlay.
 
     Args:
         key: DataJoint key to fetch SAM3DBody results
-        alpha: Transparency for mesh overlay (0-1)
+        mesh_color: RGB tuple for mesh color (default: light blue)
 
     Returns:
         Callback function for video_overlay
     """
-    try:
-        import pyrender
-        import trimesh
-    except ImportError:
-        raise ImportError("pyrender and trimesh are required for visualization. "
-                         "Install with: pip install pyrender trimesh")
-
+    from sam_3d_body.visualization.renderer import Renderer
     from pose_pipeline import SAM3DBody
 
     # Fetch results
@@ -264,63 +269,31 @@ def get_sam3d_callback(key, alpha=0.8):
     focal_length = data['focal_length']
     frame_valid = data.get('frame_valid', np.ones(len(vertices), dtype=bool))
 
+    # Cache renderer per focal length to avoid recreation
+    _renderer_cache = {}
+
     def overlay(image, idx):
         """Overlay mesh on frame."""
         if not frame_valid[idx] or np.any(np.isnan(vertices[idx])):
             return image
 
-        height, width = image.shape[:2]
-
-        # Create mesh
-        body_mesh = trimesh.Trimesh(
-            vertices=vertices[idx],
-            faces=faces,
-            process=False
-        )
-
-        # Create material
-        material = pyrender.MetallicRoughnessMaterial(
-            metallicFactor=0.2,
-            alphaMode="OPAQUE",
-            baseColorFactor=(0.8, 0.3, 0.3, 1.0)
-        )
-        mesh = pyrender.Mesh.from_trimesh(body_mesh, material=material)
-
-        # Create scene
-        scene = pyrender.Scene(ambient_light=(0.5, 0.5, 0.5))
-        scene.add(mesh, "mesh")
-
         # Get focal length for this frame
         fl = focal_length[idx] if not np.isnan(focal_length[idx]) else 1000.0
 
-        # Add camera
-        camera = pyrender.IntrinsicsCamera(
-            fx=fl, fy=fl,
-            cx=width / 2, cy=height / 2
+        # Get or create renderer for this focal length
+        if fl not in _renderer_cache:
+            _renderer_cache[fl] = Renderer(focal_length=fl, faces=faces)
+        renderer = _renderer_cache[fl]
+
+        # Render mesh overlay
+        rendered = renderer(
+            vertices[idx],
+            camera_t[idx],
+            image.copy(),
+            mesh_base_color=mesh_color,
+            scene_bg_color=(1, 1, 1),
         )
-        camera_pose = np.eye(4)
-        camera_pose[:3, 3] = camera_t[idx]
-        scene.add(camera, pose=np.linalg.inv(camera_pose))
 
-        # Add lighting
-        light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=2.0)
-        scene.add(light, pose=camera_pose)
-
-        # Render
-        try:
-            renderer = pyrender.OffscreenRenderer(width, height)
-            color, depth = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
-            renderer.delete()
-        except Exception as e:
-            print(f"Rendering error: {e}")
-            return image
-
-        # Composite with original image
-        valid_mask = (depth > 0)[:, :, None]
-        color_float = color[:, :, :3].astype(np.float32) / 255.0
-        image_float = image.astype(np.float32) / 255.0
-        output = alpha * color_float * valid_mask + (1 - alpha) * image_float * valid_mask + image_float * (1 - valid_mask)
-
-        return (output * 255).astype(np.uint8)
+        return (rendered * 255).astype(np.uint8)
 
     return overlay
