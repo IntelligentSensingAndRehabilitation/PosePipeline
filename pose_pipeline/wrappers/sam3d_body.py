@@ -16,6 +16,29 @@ from tqdm import tqdm
 _sam3d_model_cache = {}
 
 
+def _to_numpy(x):
+    """Convert torch tensor to numpy array, handling CPU/CUDA devices."""
+    if x is None:
+        return None
+    if isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    return x
+
+
+def _append_invalid_frame(results):
+    """Append placeholder values for an invalid frame."""
+    results['frame_valid'].append(False)
+    results['vertices'].append(None)
+    results['keypoints_3d'].append(None)
+    results['keypoints_2d'].append(None)
+    results['camera_t'].append(None)
+    results['focal_length'].append(None)
+    results['body_pose_params'].append(None)
+    results['hand_pose_params'].append(None)
+    results['shape_params'].append(None)
+    results['global_rot'].append(None)
+
+
 def load_sam3d_body(repo_id="facebook/sam-3d-body-dinov3", device="cuda"):
     """
     Load SAM-3D-Body model from HuggingFace.
@@ -112,93 +135,71 @@ def process_sam3d_body(key, repo_id="facebook/sam-3d-body-dinov3"):
         'frame_valid': [],
     }
 
-    # Open video
+    # Open video with proper resource management
     cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise RuntimeError(f"Failed to open video: {video_path}")
 
-    for idx in tqdm(range(num_frames), desc="Processing SAM-3D-Body"):
-        ret, frame = cap.read()
-        if not ret:
-            break
+    try:
+        for idx in tqdm(range(num_frames), desc="Processing SAM-3D-Body"):
+            ret, frame = cap.read()
+            if not ret:
+                # Video ended early - append placeholders for remaining frames
+                for _ in range(idx, num_frames):
+                    _append_invalid_frame(results)
+                break
 
-        # Check if person is present in this frame
-        if not present_dj[idx]:
-            # Mark as invalid and append placeholders
-            results['frame_valid'].append(False)
-            results['vertices'].append(None)
-            results['keypoints_3d'].append(None)
-            results['keypoints_2d'].append(None)
-            results['camera_t'].append(None)
-            results['focal_length'].append(None)
-            results['body_pose_params'].append(None)
-            results['hand_pose_params'].append(None)
-            results['shape_params'].append(None)
-            results['global_rot'].append(None)
-            continue
+            # Check if person is present in this frame
+            if not present_dj[idx]:
+                _append_invalid_frame(results)
+                continue
 
-        # Get bounding box for this frame (TLHW format from PosePipeline)
-        bbox_tlhw = bboxes_dj[idx]
+            # Get bounding box for this frame (TLHW = Top, Left, Height, Width)
+            bbox_tlhw = bboxes_dj[idx]
 
-        # Convert TLHW to TLBR (x1, y1, x2, y2) format for SAM-3D-Body
-        bbox_tlbr = np.array([
-            bbox_tlhw[0],  # x1 (left)
-            bbox_tlhw[1],  # y1 (top)
-            bbox_tlhw[0] + bbox_tlhw[2],  # x2 (right)
-            bbox_tlhw[1] + bbox_tlhw[3],  # y2 (bottom)
-        ]).reshape(1, 4)
+            # Convert TLHW to TLBR (x1, y1, x2, y2) format for SAM-3D-Body
+            bbox_tlbr = np.array([
+                bbox_tlhw[0],  # x1 (left)
+                bbox_tlhw[1],  # y1 (top)
+                bbox_tlhw[0] + bbox_tlhw[2],  # x2 (right)
+                bbox_tlhw[1] + bbox_tlhw[3],  # y2 (bottom)
+            ]).reshape(1, 4)
 
-        # Convert BGR to RGB
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Convert BGR to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        try:
-            # Run inference with pre-computed bbox
-            outputs = estimator.process_one_image(
-                frame_rgb,
-                bboxes=bbox_tlbr,
-                bbox_thr=0.5,
-                use_mask=False,
-                inference_type="full",  # Full body + hands
-            )
+            try:
+                # Run inference with pre-computed bbox
+                outputs = estimator.process_one_image(
+                    frame_rgb,
+                    bboxes=bbox_tlbr,
+                    bbox_thr=0.5,
+                    use_mask=False,
+                    inference_type="full",  # Full body + hands
+                )
 
-            if len(outputs) > 0:
-                person = outputs[0]  # Take first (and should be only) person
+                if len(outputs) > 0:
+                    person = outputs[0]  # Take first (and should be only) person
 
-                results['frame_valid'].append(True)
-                results['vertices'].append(person['pred_vertices'])
-                results['keypoints_3d'].append(person['pred_keypoints_3d'])
-                results['keypoints_2d'].append(person['pred_keypoints_2d'])
-                results['camera_t'].append(person['pred_cam_t'])
-                results['focal_length'].append(person['focal_length'])
-                results['body_pose_params'].append(person['body_pose_params'])
-                results['hand_pose_params'].append(person['hand_pose_params'])
-                results['shape_params'].append(person['shape_params'])
-                results['global_rot'].append(person['global_rot'])
-            else:
-                # No detection in this frame
-                results['frame_valid'].append(False)
-                results['vertices'].append(None)
-                results['keypoints_3d'].append(None)
-                results['keypoints_2d'].append(None)
-                results['camera_t'].append(None)
-                results['focal_length'].append(None)
-                results['body_pose_params'].append(None)
-                results['hand_pose_params'].append(None)
-                results['shape_params'].append(None)
-                results['global_rot'].append(None)
+                    results['frame_valid'].append(True)
+                    results['vertices'].append(_to_numpy(person['pred_vertices']))
+                    results['keypoints_3d'].append(_to_numpy(person['pred_keypoints_3d']))
+                    results['keypoints_2d'].append(_to_numpy(person['pred_keypoints_2d']))
+                    results['camera_t'].append(_to_numpy(person['pred_cam_t']))
+                    results['focal_length'].append(_to_numpy(person['focal_length']))
+                    results['body_pose_params'].append(_to_numpy(person['body_pose_params']))
+                    results['hand_pose_params'].append(_to_numpy(person['hand_pose_params']))
+                    results['shape_params'].append(_to_numpy(person['shape_params']))
+                    results['global_rot'].append(_to_numpy(person['global_rot']))
+                else:
+                    _append_invalid_frame(results)
 
-        except Exception as e:
-            print(f"Error processing frame {idx}: {e}")
-            results['frame_valid'].append(False)
-            results['vertices'].append(None)
-            results['keypoints_3d'].append(None)
-            results['keypoints_2d'].append(None)
-            results['camera_t'].append(None)
-            results['focal_length'].append(None)
-            results['body_pose_params'].append(None)
-            results['hand_pose_params'].append(None)
-            results['shape_params'].append(None)
-            results['global_rot'].append(None)
+            except (RuntimeError, ValueError) as e:
+                print(f"Error processing frame {idx}: {e}")
+                _append_invalid_frame(results)
 
-    cap.release()
+    finally:
+        cap.release()
 
     # Clean up video file (DataJoint fetches to temp file)
     try:
