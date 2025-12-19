@@ -2514,11 +2514,52 @@ class SAM3DBody(dj.Computed):
     frame_valid        : longblob   # [N_frames] boolean mask of valid frames
     """
 
-    def make(self, key):
+    def make_fetch(self, key):
+        """
+        Fetch phase: retrieve all required data from parent tables.
+        Runs outside the main transaction.
+        """
         checkpoint_path = (SAM3DBodyMethodLookup & key).fetch1("checkpoint_path")
+        return (checkpoint_path,)
 
+    def make_compute(self, key, checkpoint_path):
+        """
+        Compute phase: run SAM-3D-Body inference.
+        Runs outside the main transaction to avoid timeouts.
+        """
         from .wrappers.sam3d_body import process_sam3d_body
-
         res = process_sam3d_body(key, repo_id=checkpoint_path)
+        return (res,)
 
+    def make_insert(self, key, res):
+        """
+        Insert phase: store results in the table.
+        Runs inside a fresh transaction after data validation.
+        """
         self.insert1(res)
+
+
+@schema
+class SAM3DBodyVideo(dj.Computed):
+    definition = """
+    -> SAM3DBody
+    -> BlurredVideo
+    ---
+    output_video      : attach@localattach    # datajoint managed video file
+    """
+
+    def make(self, key):
+        from pose_pipeline.utils.visualization import video_overlay
+        from .wrappers.sam3d_body import get_sam3d_callback
+
+        video = (BlurredVideo & key).fetch1("output_video")
+        callback = get_sam3d_callback(key)
+
+        fd, out_file_name = tempfile.mkstemp(suffix=".mp4")
+        os.close(fd)
+        video_overlay(video, out_file_name, callback, downsample=1)
+        key["output_video"] = out_file_name
+
+        self.insert1(key)
+
+        os.remove(video)
