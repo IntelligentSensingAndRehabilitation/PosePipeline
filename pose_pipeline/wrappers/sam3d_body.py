@@ -265,11 +265,24 @@ def process_sam3d_body(
         if all(x is None for x in data_list):
             return None
 
-        # Find first non-None to get shape
+        # Find first non-None to get shape (or detect scalar)
+        is_scalar = False
         for x in data_list:
             if x is not None:
-                shape_if_none = x.shape
+                if hasattr(x, "shape"):
+                    shape_if_none = x.shape
+                else:
+                    # Scalar value (e.g., focal_length is a float)
+                    is_scalar = True
                 break
+
+        if is_scalar:
+            # Handle list of scalars
+            result = np.full(len(data_list), np.nan)
+            for i, x in enumerate(data_list):
+                if x is not None:
+                    result[i] = x
+            return result
 
         if shape_if_none is None:
             return None
