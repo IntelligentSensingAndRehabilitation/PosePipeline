@@ -2466,3 +2466,100 @@ class HandPoseEstimation(dj.Computed):
             raise Exception(f"Method not implemented")
 
         self.insert1(key)
+
+
+# =============================================================================
+# SAM-3D-Body Tables (MHR format)
+# =============================================================================
+
+@schema
+class SAM3DBodyMethodLookup(dj.Lookup):
+    definition = """
+    sam3d_method       : int
+    ---
+    sam3d_method_name  : varchar(50)
+    checkpoint_path    : varchar(256)
+    """
+    contents = [
+        {"sam3d_method": 0, "sam3d_method_name": "DINOv3-H+",
+         "checkpoint_path": "facebook/sam-3d-body-dinov3"},
+        {"sam3d_method": 1, "sam3d_method_name": "ViT-H",
+         "checkpoint_path": "facebook/sam-3d-body-vith"},
+    ]
+
+
+@schema
+class SAM3DBodyMethod(dj.Manual):
+    definition = """
+    -> PersonBbox
+    -> SAM3DBodyMethodLookup
+    """
+
+
+@schema
+class SAM3DBody(dj.Computed):
+    definition = """
+    -> SAM3DBodyMethod
+    ---
+    vertices           : longblob   # [N_frames, N_vertices, 3] MHR mesh vertices
+    keypoints_3d       : longblob   # [N_frames, 70, 3] 3D joint positions
+    keypoints_2d       : longblob   # [N_frames, 70, 2] 2D projected keypoints
+    camera_t           : longblob   # [N_frames, 3] camera translations
+    focal_length       : longblob   # [N_frames] focal lengths
+    body_pose_params   : longblob   # MHR body pose parameters
+    hand_pose_params   : longblob   # MHR hand pose parameters
+    shape_params       : longblob   # MHR shape parameters
+    global_rot         : longblob   # Global rotation parameters
+    mesh_faces         : longblob   # Mesh face indices (shared across frames)
+    frame_valid        : longblob   # [N_frames] boolean mask of valid frames
+    """
+
+    def make_fetch(self, key):
+        """
+        Fetch phase: retrieve all required data from parent tables.
+        Runs outside the main transaction.
+        """
+        checkpoint_path = (SAM3DBodyMethodLookup & key).fetch1("checkpoint_path")
+        return (checkpoint_path,)
+
+    def make_compute(self, key, checkpoint_path):
+        """
+        Compute phase: run SAM-3D-Body inference.
+        Runs outside the main transaction to avoid timeouts.
+        """
+        from .wrappers.sam3d_body import process_sam3d_body
+        res = process_sam3d_body(key, repo_id=checkpoint_path)
+        return (res,)
+
+    def make_insert(self, key, res):
+        """
+        Insert phase: store results in the table.
+        Runs inside a fresh transaction after data validation.
+        """
+        self.insert1(res)
+
+
+@schema
+class SAM3DBodyVideo(dj.Computed):
+    definition = """
+    -> SAM3DBody
+    -> BlurredVideo
+    ---
+    output_video      : attach@localattach    # datajoint managed video file
+    """
+
+    def make(self, key):
+        from pose_pipeline.utils.visualization import video_overlay
+        from .wrappers.sam3d_body import get_sam3d_callback
+
+        video = (BlurredVideo & key).fetch1("output_video")
+        callback = get_sam3d_callback(key)
+
+        fd, out_file_name = tempfile.mkstemp(suffix=".mp4")
+        os.close(fd)
+        video_overlay(video, out_file_name, callback, downsample=1)
+        key["output_video"] = out_file_name
+
+        self.insert1(key)
+
+        os.remove(video)
