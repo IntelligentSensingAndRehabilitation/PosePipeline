@@ -2478,16 +2478,10 @@ class SAM3DBodyMethodLookup(dj.Lookup):
     sam3d_method       : int
     ---
     sam3d_method_name  : varchar(50)
-    checkpoint_path    : varchar(256)
-    backend            : enum('jax', 'pytorch')
     """
     contents = [
-        {"sam3d_method": 0, "sam3d_method_name": "DINOv3-H+ (JAX)",
-         "checkpoint_path": "facebook/sam-3d-body-dinov3", "backend": "jax"},
-        {"sam3d_method": 1, "sam3d_method_name": "ViT-H (JAX)",
-         "checkpoint_path": "facebook/sam-3d-body-vith", "backend": "jax"},
-        {"sam3d_method": 2, "sam3d_method_name": "DINOv3-H+ (Torch)",
-         "checkpoint_path": "facebook/sam-3d-body-dinov3", "backend": "pytorch"},
+        {"sam3d_method": 0, "sam3d_method_name": "jax"},
+        {"sam3d_method": 1, "sam3d_method_name": "torch_dinov3"},
     ]
 
 
@@ -2520,18 +2514,16 @@ class SAM3DBody(dj.Computed):
     def make_fetch(self, key):
         """
         Fetch phase: retrieve all required data from parent tables.
-        Runs outside the main transaction.
         """
-        checkpoint_path, backend = (SAM3DBodyMethodLookup & key).fetch1("checkpoint_path", "backend")
-        return (checkpoint_path, backend)
+        method_name = (SAM3DBodyMethodLookup & key).fetch1("sam3d_method_name")
+        return (method_name,)
 
-    def make_compute(self, key, checkpoint_path, backend):
+    def make_compute(self, key, method_name):
         """
         Compute phase: run SAM-3D-Body inference.
-        Runs outside the main transaction to avoid timeouts.
         """
         from .wrappers.sam3d_body import process_sam3d_body
-        res = process_sam3d_body(key, repo_id=checkpoint_path, backend=backend)
+        res = process_sam3d_body(key, method_name=method_name)
         return (res,)
 
     def make_insert(self, key, res):

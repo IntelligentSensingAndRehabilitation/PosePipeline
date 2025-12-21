@@ -9,9 +9,6 @@ from typing import Optional, Literal, Dict, Tuple, Any
 import cv2
 import numpy as np
 
-# Types for backend selection and results
-BackendType = Literal["jax", "pytorch"]
-
 def is_jax_available() -> bool:
     """Check if the JAX/Equinox backend package is installed."""
     import importlib.util
@@ -41,8 +38,6 @@ def process_sam3d_pytorch(
 
     Returns:
         Standardized dictionary containing stacked NumPy arrays for all outputs.
-        Keys include: vertices, keypoints_3d, keypoints_2d, camera_t, focal_length,
-        body_pose_params, hand_pose_params, shape_params, global_rot, and mesh_faces.
     """
     from sam_3d_body import SAM3DBodyEstimator, load_sam_3d_body
     from sam_3d_body.build_models import _hf_download
@@ -69,7 +64,6 @@ def process_sam3d_pytorch(
                 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             bbox_xywh = bboxes[i]
-            # Convert to XYXY for the PyTorch estimator
             bbox_xyxy = np.array([
                 bbox_xywh[0], bbox_xywh[1],
                 bbox_xywh[0] + bbox_xywh[2],
@@ -85,7 +79,6 @@ def process_sam3d_pytorch(
                 continue
                 
             p = outputs[0]
-            # Convert torch tensors to numpy and store
             results["vertices"].append(p["pred_vertices"].detach().cpu().numpy())
             results["keypoints_3d"].append(p["pred_keypoints_3d"].detach().cpu().numpy())
             results["keypoints_2d"].append(p["pred_keypoints_2d"].detach().cpu().numpy())
@@ -115,7 +108,6 @@ def process_sam3d_jax(
     video_path: str,
     bboxes: np.ndarray,
     present: np.ndarray,
-    repo_id: str = "facebook/sam-3d-body-dinov3",
 ) -> Dict[str, np.ndarray]:
     """
     Run SAM3D inference using the JAX/Equinox backend.
@@ -124,7 +116,6 @@ def process_sam3d_jax(
         video_path: Path to the local MP4 video file.
         bboxes: (N_frames, 4) array of bounding boxes in [x, y, w, h] format.
         present: (N_frames,) boolean mask indicating if the person is present.
-        repo_id: HuggingFace repository ID for the model weights.
 
     Returns:
         Standardized dictionary containing stacked NumPy arrays for all outputs.
@@ -132,11 +123,8 @@ def process_sam3d_jax(
     from sam3d_body_eqx.inference import SAM3DBodyEstimator
     from sam3d_body_eqx.inference.utils import stack_sequence_results
     
-    # Load JAX estimator (uses helper function in sam3d_body_eqx)
     estimator = SAM3DBodyEstimator.from_pretrained()
-    
     results_list = []
-    # Use the estimator's sequence processing generator
     generator = estimator.predict_video_with_bboxes(
         input_path=video_path, bboxes=bboxes, present_mask=present, show_progress=True
     )
@@ -144,7 +132,6 @@ def process_sam3d_jax(
     for _, _, frame_results in generator:
         res = frame_results[0] if frame_results else None
         if res:
-            # Map JAX-specific output keys to the standardized PosePipeline API
             results_list.append({
                 "vertices": np.asarray(res["pred_vertices"]),
                 "keypoints_3d": np.asarray(res["pred_keypoints_3d"]),
@@ -159,42 +146,41 @@ def process_sam3d_jax(
         else:
             results_list.append(None)
             
-    # Consolidate frames using the JAX-helper stack utility
     final = stack_sequence_results(results_list)
     final["mesh_faces"] = np.asarray(estimator.model.head_pose.mhr.faces)
     return final
 
 def process_sam3d_body(
     key: Dict[str, Any], 
-    repo_id: str = "facebook/sam-3d-body-dinov3", 
-    backend: BackendType = "jax"
+    method_name: str = "jax"
 ) -> Dict[str, np.ndarray]:
     """
     Main entry point for SAM3D processing in DataJoint pipelines.
 
     Args:
         key: DataJoint primary key dictionary.
-        repo_id: HuggingFace repository ID for model weights.
-        backend: Explicit backend selection: "jax" or "pytorch".
+        method_name: Explicit backend selection: "jax" or "torch_dinov3".
 
     Returns:
         Standardized results dictionary ready for DataJoint insertion.
     """
     from pose_pipeline import PersonBbox, Video
     
-    if backend == "jax" and not is_jax_available():
+    if method_name == "jax" and not is_jax_available():
         raise ImportError("JAX backend requested but sam3d_body_eqx not installed.")
-    if backend == "pytorch" and not is_pytorch_available():
+    if method_name == "torch_dinov3" and not is_pytorch_available():
         raise ImportError("PyTorch backend requested but sam_3d_body not installed.")
 
     # 1. Fetch data from parent tables
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
     
-    # 2. Dispatch to specific backend implementation
-    if backend == "jax":
-        results = process_sam3d_jax(video_path, bboxes, present, repo_id=repo_id)
+    # 2. Dispatch based on method name
+    if method_name == "jax":
+        results = process_sam3d_jax(video_path, bboxes, present)
+    elif method_name == "torch_dinov3":
+        results = process_sam3d_pytorch(video_path, bboxes, present, repo_id="facebook/sam-3d-body-dinov3")
     else:
-        results = process_sam3d_pytorch(video_path, bboxes, present, repo_id=repo_id, device="cuda")
+        raise ValueError(f"Unknown SAM3D method: {method_name}")
         
     # 3. Finalize and return
     results.update(key)
