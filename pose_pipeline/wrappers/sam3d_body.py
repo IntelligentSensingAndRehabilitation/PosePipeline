@@ -8,6 +8,7 @@ import time
 from typing import Optional, Literal, Dict, Tuple, Any
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 def is_jax_available() -> bool:
     """Check if the JAX/Equinox backend package is installed."""
@@ -56,7 +57,7 @@ def process_sam3d_pytorch(
     
     cap = cv2.VideoCapture(video_path)
     try:
-        for i in range(num_frames):
+        for i in tqdm(range(num_frames), desc="SAM3D (Torch)"):
             ret, frame = cap.read()
             if not ret or not present[i]:
                 for k in results: results[k].append(None)
@@ -64,12 +65,14 @@ def process_sam3d_pytorch(
                 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             bbox_xywh = bboxes[i]
+            # Convert to XYXY for the PyTorch estimator
             bbox_xyxy = np.array([
                 bbox_xywh[0], bbox_xywh[1],
                 bbox_xywh[0] + bbox_xywh[2],
                 bbox_xywh[1] + bbox_xywh[3]
             ]).reshape(1, 4)
             
+            # Original PyTorch code handles conversion to numpy internally
             outputs = estimator.process_one_image(
                 frame_rgb, bboxes=bbox_xyxy, bbox_thr=0.5, use_mask=False, inference_type="full"
             )
@@ -79,15 +82,16 @@ def process_sam3d_pytorch(
                 continue
                 
             p = outputs[0]
-            results["vertices"].append(p["pred_vertices"].detach().cpu().numpy())
-            results["keypoints_3d"].append(p["pred_keypoints_3d"].detach().cpu().numpy())
-            results["keypoints_2d"].append(p["pred_keypoints_2d"].detach().cpu().numpy())
-            results["camera_t"].append(p["pred_cam_t"].detach().cpu().numpy())
-            results["focal_length"].append(float(p["focal_length"].detach().cpu().numpy()))
-            results["body_pose_params"].append(p["body_pose_params"].detach().cpu().numpy())
-            results["hand_pose_params"].append(p["hand_pose_params"].detach().cpu().numpy())
-            results["shape_params"].append(p["shape_params"].detach().cpu().numpy())
-            results["global_rot"].append(p["global_rot"].detach().cpu().numpy())
+            # Store outputs (already NumPy arrays)
+            results["vertices"].append(p.get("pred_vertices"))
+            results["keypoints_3d"].append(p.get("pred_keypoints_3d"))
+            results["keypoints_2d"].append(p.get("pred_keypoints_2d"))
+            results["camera_t"].append(p.get("pred_cam_t"))
+            results["focal_length"].append(float(p.get("focal_length", 0.0)))
+            results["body_pose_params"].append(p.get("body_pose_params"))
+            results["hand_pose_params"].append(p.get("hand_pose_params"))
+            results["shape_params"].append(p.get("shape_params"))
+            results["global_rot"].append(p.get("global_rot"))
     finally:
         cap.release()
         
@@ -123,8 +127,11 @@ def process_sam3d_jax(
     from sam3d_body_eqx.inference import SAM3DBodyEstimator
     from sam3d_body_eqx.inference.utils import stack_sequence_results
     
+    # Load JAX estimator
     estimator = SAM3DBodyEstimator.from_pretrained()
+    
     results_list = []
+    # Use the estimator's sequence processing generator
     generator = estimator.predict_video_with_bboxes(
         input_path=video_path, bboxes=bboxes, present_mask=present, show_progress=True
     )
@@ -132,6 +139,7 @@ def process_sam3d_jax(
     for _, _, frame_results in generator:
         res = frame_results[0] if frame_results else None
         if res:
+            # Map JAX-specific output keys to the standardized PosePipeline API
             results_list.append({
                 "vertices": np.asarray(res["pred_vertices"]),
                 "keypoints_3d": np.asarray(res["pred_keypoints_3d"]),
@@ -146,6 +154,7 @@ def process_sam3d_jax(
         else:
             results_list.append(None)
             
+    # Consolidate frames using the JAX-helper stack utility
     final = stack_sequence_results(results_list)
     final["mesh_faces"] = np.asarray(estimator.model.head_pose.mhr.faces)
     return final
