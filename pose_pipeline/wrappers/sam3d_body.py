@@ -112,40 +112,48 @@ def process_sam3d_jax(
     video_path: str,
     bboxes: np.ndarray,
     present: np.ndarray,
+    use_hands: bool = False,
+    batch_size: int = 4,
 ) -> Dict[str, np.ndarray]:
     """
-    Run SAM3D inference using the JAX/Equinox backend.
+    Run SAM3D inference using the JAX/Equinox backend with batched processing.
 
     Args:
         video_path: Path to the local MP4 video file.
         bboxes: (N_frames, 4) array of bounding boxes in [x, y, w, h] format.
         present: (N_frames,) boolean mask indicating if the person is present.
+        use_hands: Whether to enable hand refinement pipeline.
+        batch_size: Number of frames to process at once (default 4 for best performance).
 
     Returns:
         Standardized dictionary containing stacked NumPy arrays for all outputs.
     """
     from sam3d_body_eqx.inference import SAM3DBodyEstimator
     from sam3d_body_eqx.inference.utils import stack_sequence_results
-    
+
     # Load JAX estimator
     estimator = SAM3DBodyEstimator.from_pretrained()
-    
+
     results_list = []
-    # Use the estimator's sequence processing generator
-    generator = estimator.predict_video_with_bboxes(
-        input_path=video_path, bboxes=bboxes, present_mask=present, show_progress=True
+    # Use the batched video processing for faster inference
+    generator = estimator.predict_video_batched(
+        input_path=video_path,
+        bboxes=bboxes,
+        present_mask=present,
+        batch_size=batch_size,
+        use_hands=use_hands,
+        show_progress=True,
     )
-    
-    for _, _, frame_results in generator:
-        res = frame_results[0] if frame_results else None
-        if res:
+
+    for _, res in generator:
+        if res is not None:
             # Map JAX-specific output keys to the standardized PosePipeline API
             results_list.append({
-                "vertices": np.asarray(res["pred_vertices"]),
+                "vertices": np.asarray(res["pred_vertices"]) if res.get("pred_vertices") is not None else None,
                 "keypoints_3d": np.asarray(res["pred_keypoints_3d"]),
-                "keypoints_2d": np.asarray(res["pred_keypoints_2d"]),
-                "camera_t": np.asarray(res["pred_cam_t"]),
-                "focal_length": float(res["focal_length"]),
+                "keypoints_2d": np.asarray(res["pred_keypoints_2d"]) if res.get("pred_keypoints_2d") is not None else None,
+                "camera_t": np.asarray(res["pred_cam_t"]) if res.get("pred_cam_t") is not None else None,
+                "focal_length": float(res["focal_length"]) if res.get("focal_length") is not None else None,
                 "body_pose_params": np.asarray(res["body_pose"]),
                 "hand_pose_params": np.asarray(res["hand"]),
                 "shape_params": np.asarray(res["shape"]),
@@ -153,7 +161,7 @@ def process_sam3d_jax(
             })
         else:
             results_list.append(None)
-            
+
     # Consolidate frames using the JAX-helper stack utility
     final = stack_sequence_results(results_list)
     final["mesh_faces"] = np.asarray(estimator.model.head_pose.mhr.faces)
@@ -175,17 +183,19 @@ def process_sam3d_body(
     """
     from pose_pipeline import PersonBbox, Video
     
-    if method_name == "jax" and not is_jax_available():
+    if method_name in ("jax", "jax_hands") and not is_jax_available():
         raise ImportError("JAX backend requested but sam3d_body_eqx not installed.")
     if method_name == "torch_dinov3" and not is_pytorch_available():
         raise ImportError("PyTorch backend requested but sam_3d_body not installed.")
 
     # 1. Fetch data from parent tables
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
-    
+
     # 2. Dispatch based on method name
     if method_name == "jax":
-        results = process_sam3d_jax(video_path, bboxes, present)
+        results = process_sam3d_jax(video_path, bboxes, present, use_hands=False)
+    elif method_name == "jax_hands":
+        results = process_sam3d_jax(video_path, bboxes, present, use_hands=True)
     elif method_name == "torch_dinov3":
         results = process_sam3d_pytorch(video_path, bboxes, present, repo_id="facebook/sam-3d-body-dinov3")
     else:
