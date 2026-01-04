@@ -134,11 +134,20 @@ def process_sam3d_jax(
     # Load JAX estimator
     estimator = SAM3DBodyEstimator.from_pretrained()
 
+    # Convert bboxes from [x, y, w, h] to [x1, y1, x2, y2] format
+    # The estimator expects XYXY format
+    bboxes_xyxy = np.column_stack([
+        bboxes[:, 0],                      # x1
+        bboxes[:, 1],                      # y1
+        bboxes[:, 0] + bboxes[:, 2],       # x2 = x + w
+        bboxes[:, 1] + bboxes[:, 3],       # y2 = y + h
+    ])
+
     results_list = []
     # Use the batched video processing for faster inference
     generator = estimator.predict_video_batched(
         input_path=video_path,
-        bboxes=bboxes,
+        bboxes=bboxes_xyxy,
         present_mask=present,
         batch_size=batch_size,
         use_hands=use_hands,
@@ -223,23 +232,27 @@ def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, floa
     Returns:
         A function: overlay(image, frame_index) -> visualized_image.
     """
-    from sam_3d_body.visualization.renderer import Renderer
+    from sam3d_body_eqx.visualization.mesh import render_mesh
     from pose_pipeline import SAM3DBody
-    
+
     data = (SAM3DBody & key).fetch1()
     vertices, faces, camera_t, focal_length = data["vertices"], data["mesh_faces"], data["camera_t"], data["focal_length"]
     valid = data.get("frame_valid", np.ones(len(vertices), dtype=bool))
-    
-    _cache = {}
+
     def overlay(image, idx):
         if not valid[idx] or np.any(np.isnan(vertices[idx])):
             return image
-        
+
         fl = focal_length[idx] if not np.isnan(focal_length[idx]) else 1000.0
-        if fl not in _cache:
-            _cache[fl] = Renderer(focal_length=fl, faces=faces)
-        
-        rendered = _cache[fl](vertices[idx], camera_t[idx], image.copy(), mesh_base_color=mesh_color)
-        return (rendered * 255).astype(np.uint8)
-        
+
+        rendered = render_mesh(
+            image=image,
+            vertices=vertices[idx],
+            faces=faces,
+            camera_translation=camera_t[idx],
+            focal_length=fl,
+            mesh_color=mesh_color,
+        )
+        return rendered
+
     return overlay
