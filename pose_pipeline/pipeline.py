@@ -1024,7 +1024,11 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 18, "top_down_method_name": "Bridging_ExtDetector_COCO_25"},
         {"top_down_method": 19, "top_down_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"top_down_method": 20, "top_down_method_name": "Bridging_ExtDetector_smpl+head_30"},
-        {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"}
+        {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"},
+        {"top_down_method": 30, "top_down_method_name": "Sapiens_0.3b_Goliath"},
+        {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
+        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
+        {"top_down_method": 33, "top_down_method_name": "Sapiens_2b_Goliath"}
     ]
 
 
@@ -1277,6 +1281,12 @@ class TopDownPerson(dj.Computed):
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
 
+        elif "Sapiens" in method_name:
+            from .wrappers.sapiens import sapiens_top_down_person
+
+            variant = method_name.split("_")[1]
+            key["keypoints"] = sapiens_top_down_person(key, variant=variant)
+
         else:
             raise Exception("Method not implemented")
 
@@ -1320,6 +1330,11 @@ class TopDownPerson(dj.Computed):
             from pose_pipeline.wrappers.bridging import normalized_joint_name_dictionary
 
             return normalized_joint_name_dictionary["bml_movi_87"]
+
+        elif "Sapiens" in method:
+            from .wrappers.sapiens import GOLIATH_308_KEYPOINT_NAMES
+
+            return GOLIATH_308_KEYPOINT_NAMES
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
