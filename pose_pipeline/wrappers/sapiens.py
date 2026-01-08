@@ -12,8 +12,6 @@ import equinox as eqx
 from tqdm import tqdm
 from typing import Dict, Any, List, Optional, Tuple
 
-from sapiens_eqx import GOLIATH_308_KEYPOINT_NAMES
-
 
 def is_sapiens_available() -> bool:
     """Check if the SapiensEqx package is installed."""
