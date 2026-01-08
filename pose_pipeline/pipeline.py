@@ -1027,8 +1027,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"},
         {"top_down_method": 30, "top_down_method_name": "Sapiens_0.3b_Goliath"},
         {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
-        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
-        {"top_down_method": 33, "top_down_method_name": "Sapiens_2b_Goliath"}
+        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"}
     ]
 
 
@@ -1332,9 +1331,9 @@ class TopDownPerson(dj.Computed):
             return normalized_joint_name_dictionary["bml_movi_87"]
 
         elif "Sapiens" in method:
-            from .wrappers.sapiens import GOLIATH_308_KEYPOINT_NAMES
+            from .wrappers.sapiens import get_joint_names
 
-            return GOLIATH_308_KEYPOINT_NAMES
+            return get_joint_names()
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary

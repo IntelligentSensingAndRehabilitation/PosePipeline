@@ -10,16 +10,13 @@ import jax.numpy as jnp
 import numpy as np
 import equinox as eqx
 from tqdm import tqdm
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 
-from sapiens_eqx import GOLIATH_308_KEYPOINT_NAMES
+NUM_KEYPOINTS = 308
 
-
-def is_sapiens_available() -> bool:
-    """Check if the SapiensEqx package is installed."""
-    import importlib.util
-
-    return importlib.util.find_spec("sapiens_eqx") is not None
+def get_joint_names():
+    from sapiens_eqx import GOLIATH_308_KEYPOINT_NAMES
+    return GOLIATH_308_KEYPOINT_NAMES
 
 
 class SapiensEstimator:
@@ -194,8 +191,8 @@ class SapiensEstimator:
         # Standardize outputs
         final_results = {}
         if "pose" in self.tasks:
-            # Stack into (N, 308, 3)
-            K = 308
+            # Stack into (N, NUM_KEYPOINTS, 3)
+            K = NUM_KEYPOINTS
             stacked = np.full((num_frames, K, 3), np.nan)
             for idx, k in enumerate(results["pose"]):
                 if k is not None:
@@ -205,16 +202,13 @@ class SapiensEstimator:
         return final_results
 
 
-def sapiens_top_down_person(key: Dict[str, Any], variant: str = "2b"):
+def sapiens_top_down_person(key: Dict[str, Any], variant: str = "1b", tasks=["pose"]) -> np.ndarray:
     """Entry point for DataJoint TopDownPerson table."""
     from pose_pipeline.pipeline import Video, PersonBbox
 
-    if not is_sapiens_available():
-        raise ImportError("sapiens_eqx not installed.")
-
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
 
-    estimator = SapiensEstimator(variant=variant, tasks=["pose"])
+    estimator = SapiensEstimator(variant=variant, tasks=tasks)
     results = estimator.predict_video(video_path, bboxes, present)
 
     if "tmp" in str(video_path) and os.path.exists(video_path):
