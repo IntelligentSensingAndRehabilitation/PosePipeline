@@ -1,6 +1,6 @@
 """
 Sapiens wrapper for PosePipeline.
-Supports Pose, Depth, and Normal estimation using the JAX/Equinox backend.
+Supports Pose, Depth, Normal, and Segmentation estimation using the JAX/Equinox backend.
 """
 
 import os
@@ -26,9 +26,11 @@ class SapiensEstimator:
         from sapiens_eqx.model.sapiens_pose import SapiensPose
         from sapiens_eqx.model.sapiens_depth import SapiensDepth
         from sapiens_eqx.model.sapiens_normal import SapiensNormal
+        from sapiens_eqx.model.sapiens_seg import SapiensSegmentation
         from sapiens_eqx.inference.pose_estimator import SapiensPoseEstimator
         from sapiens_eqx.inference.depth_estimator import SapiensDepthEstimator
         from sapiens_eqx.inference.normal_estimator import SapiensNormalEstimator
+        from sapiens_eqx.inference.segmentation_estimator import SapiensSegmentationEstimator
 
         self.variant = variant
         self.tasks = tasks
@@ -58,6 +60,13 @@ class SapiensEstimator:
                 model = SapiensNormal.from_pytorch(variant=variant)
             self.estimators["normal"] = SapiensNormalEstimator(model, img_size=img_size)
 
+        if "seg" in tasks:
+            try:
+                model = SapiensSegmentation.from_pretrained(variant=variant, token=self.token)
+            except Exception:
+                model = SapiensSegmentation.from_pytorch(variant=variant)
+            self.estimators["seg"] = SapiensSegmentationEstimator(model, img_size=img_size)
+
         # JIT the inference steps
         if "pose" in self.estimators:
             self._jit_pose = eqx.filter_jit(self._batched_pose_step)
@@ -65,6 +74,8 @@ class SapiensEstimator:
             self._jit_depth = eqx.filter_jit(self._batched_depth_step)
         if "normal" in self.estimators:
             self._jit_normal = eqx.filter_jit(self._batched_normal_step)
+        if "seg" in self.estimators:
+            self._jit_seg = eqx.filter_jit(self._batched_seg_step)
 
     def _batched_pose_step(self, batch_tensor: jnp.ndarray):
         heatmaps = self.estimators["pose"].model(batch_tensor, inference=True)
@@ -77,6 +88,9 @@ class SapiensEstimator:
 
     def _batched_normal_step(self, batch_tensor: jnp.ndarray):
         return self.estimators["normal"].model(batch_tensor, inference=True)
+
+    def _batched_seg_step(self, batch_tensor: jnp.ndarray):
+        return self.estimators["seg"].model(batch_tensor, inference=True)
 
     def predict_video(self, video_path: str, bboxes: np.ndarray, present: np.ndarray, batch_size: int = 4):
         from sapiens_eqx.inference.demo_utils import box_to_center_scale, get_affine_transform
@@ -145,6 +159,8 @@ class SapiensEstimator:
                 batch_outputs["depth"] = self._jit_depth(batch_tensor)
             if "normal" in self.tasks:
                 batch_outputs["normal"] = self._jit_normal(batch_tensor)
+            if "seg" in self.tasks:
+                batch_outputs["seg"] = self._jit_seg(batch_tensor)
 
             # Post-process and map back
             for idx_in_batch in range(min(i + batch_size, num_frames) - i):
@@ -186,6 +202,17 @@ class SapiensEstimator:
                 if "normal" in self.tasks:
                     results["normal"].append(None)  # Skipping for now
 
+                if "seg" in self.tasks:
+                    # Output is (batch, num_classes, H, W) logits
+                    seg_logits = np.array(batch_outputs["seg"][res_idx])
+                    # Get class predictions via argmax
+                    seg_mask = np.argmax(seg_logits, axis=0).astype(np.uint8)
+                    # Resize to crop size
+                    seg_mask = cv2.resize(
+                        seg_mask, (self.img_size[1], self.img_size[0]), interpolation=cv2.INTER_NEAREST
+                    )
+                    results["seg"].append(seg_mask)
+
         cap.release()
 
         # Standardize outputs
@@ -198,6 +225,15 @@ class SapiensEstimator:
                 if k is not None:
                     stacked[idx] = k
             final_results["keypoints"] = stacked
+
+        if "seg" in self.tasks:
+            # Stack into (N, H, W) with 255 for missing frames
+            H, W = self.img_size
+            stacked = np.full((num_frames, H, W), 255, dtype=np.uint8)
+            for idx, mask in enumerate(results["seg"]):
+                if mask is not None:
+                    stacked[idx] = mask
+            final_results["segmentation"] = stacked
 
         return final_results
 
