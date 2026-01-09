@@ -187,20 +187,14 @@ class SapiensEstimator:
                     results["pose"].append(np.concatenate([kpts_orig, scores[:, None]], axis=1))
 
                 if "depth" in self.tasks:
+                    # Output is (batch, 1, H, W)
                     depth_crop = np.array(batch_outputs["depth"][res_idx, 0])
-                    # Resize to crop size
-                    depth_crop = cv2.resize(
-                        depth_crop, (self.img_size[1], self.img_size[0]), interpolation=cv2.INTER_LINEAR
-                    )
-                    # Warp back
-                    # This is tricky for depth maps, usually we just keep the crop or warp back.
-                    # For now, let's keep it consistent with keypoints if possible,
-                    # but depth maps are full images.
-                    # results["depth"].append(depth_crop) # Placeholder
-                    results["depth"].append(None)  # Skipping complex depth warping for now
+                    results["depth"].append(depth_crop)
 
                 if "normal" in self.tasks:
-                    results["normal"].append(None)  # Skipping for now
+                    # Output is (batch, 3, H, W) - surface normals in range [-1, 1]
+                    normal_crop = np.array(batch_outputs["normal"][res_idx])
+                    results["normal"].append(normal_crop)
 
                 if "seg" in self.tasks:
                     # Output is (batch, num_classes, H, W) logits
@@ -234,6 +228,14 @@ class SapiensEstimator:
                 if mask is not None:
                     stacked[idx] = mask
             final_results["segmentation"] = stacked
+
+        if "depth" in self.tasks:
+            # Return list of depth crops (variable output size from model)
+            final_results["depth"] = results["depth"]
+
+        if "normal" in self.tasks:
+            # Return list of normal crops (variable output size from model)
+            final_results["normal"] = results["normal"]
 
         return final_results
 
