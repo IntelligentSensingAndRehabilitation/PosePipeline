@@ -10,16 +10,19 @@ Usage:
 
 Examples:
     # Basic usage with just filename (auto-detect project)
-    python sapiens_overlays.py p504_20240511_094008.20150962
+    python sapiens_overlays.py my_video.mp4
 
     # Specify project explicitly
-    python sapiens_overlays.py p504_20240511_094008.20150962 --project CONTROL_TEST
+    python sapiens_overlays.py my_video.mp4 --project MY_PROJECT
 
-    # Use larger model
-    python sapiens_overlays.py p504_20240511_094008.20150962 --variant 1b
+    # Use larger model variant
+    python sapiens_overlays.py my_video.mp4 --variant 1b
 
-    # Full example
-    python sapiens_overlays.py SMC_003_53pma_full.mp4 --project BABY_OSCAR --variant 1b
+    # Limit to first 100 frames (useful for testing)
+    python sapiens_overlays.py my_video.mp4 --max-frames 100
+
+    # For infant/baby videos where segmentation fails
+    python sapiens_overlays.py baby_video.mp4 --no-seg-mask
 """
 
 import argparse
@@ -315,7 +318,7 @@ def add_label(frame, text, position='top-left'):
 
 
 def create_tiled_video(video_path, results, bboxes, present, output_path,
-                       img_size=(1024, 768), downsample=2):
+                       img_size=(1024, 768), downsample=2, use_seg_mask=True):
     """Create a 2x2 tiled video with all four visualizations."""
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -343,7 +346,7 @@ def create_tiled_video(video_path, results, bboxes, present, output_path,
 
         # Get segmentation mask for this frame (used by depth/normal visualization)
         seg_mask = None
-        if 'segmentation' in results:
+        if use_seg_mask and 'segmentation' in results:
             seg_data = results['segmentation']
             if isinstance(seg_data, np.ndarray) and i < len(seg_data):
                 seg_mask = seg_data[i]
@@ -437,7 +440,7 @@ def find_video_key(filename, project=None, tracking_method=21, video_subject_id=
     raise ValueError(f"No matching video found for filename '{filename}'")
 
 
-def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, video_subject_id=0, max_frames=None):
+def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, video_subject_id=0, max_frames=None, use_seg_mask=True):
     """Run all four Sapiens modes on a video and create tiled visualization."""
     # Find the video key
     key = find_video_key(filename, project, tracking_method, video_subject_id)
@@ -487,7 +490,7 @@ def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, vi
     print("Creating tiled visualization...")
     print(f"{'='*50}")
     create_tiled_video(video_path, all_results, bboxes, present, output_path,
-                       img_size=img_size, downsample=2)
+                       img_size=img_size, downsample=2, use_seg_mask=use_seg_mask)
 
     print(f"\nDone! Output: {output_path}")
     return output_path
@@ -526,6 +529,11 @@ def main():
         default=None,
         help="Maximum number of frames to process (default: all)"
     )
+    parser.add_argument(
+        "--no-seg-mask",
+        action="store_true",
+        help="Disable segmentation masking for depth/normal (use for babies/infants)"
+    )
 
     args = parser.parse_args()
 
@@ -535,7 +543,8 @@ def main():
         variant=args.variant,
         tracking_method=args.tracking_method,
         video_subject_id=args.subject_id,
-        max_frames=args.max_frames
+        max_frames=args.max_frames,
+        use_seg_mask=not args.no_seg_mask
     )
 
 
