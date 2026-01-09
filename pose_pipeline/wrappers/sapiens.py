@@ -19,6 +19,86 @@ def get_joint_names():
     return GOLIATH_308_KEYPOINT_NAMES
 
 
+def visualize_depth_map(depth_crop: np.ndarray, seg_mask: np.ndarray = None, background_color: int = 100) -> np.ndarray:
+    """
+    Visualize depth map using official Sapiens approach.
+
+    Uses COLORMAP_INFERNO with depth inversion (near camera = bright/warm, far = dark/cool).
+    Background is filled with uniform gray.
+
+    Args:
+        depth_crop: Raw depth values (H, W)
+        seg_mask: Optional segmentation mask (H, W), foreground > 0
+        background_color: Background gray value (default 100)
+
+    Returns:
+        BGR image (H, W, 3)
+    """
+    H, W = depth_crop.shape
+
+    # Determine foreground mask
+    if seg_mask is not None:
+        mask = seg_mask > 0
+    else:
+        mask = depth_crop > 0
+
+    # Initialize with gray background
+    result = np.full((H, W, 3), background_color, dtype=np.uint8)
+
+    depth_foreground = depth_crop[mask]
+    if len(depth_foreground) == 0:
+        return result
+
+    min_val, max_val = depth_foreground.min(), depth_foreground.max()
+    if max_val <= min_val:
+        return result
+
+    # Invert: near camera = bright (high values), far = dark (low values)
+    depth_normalized = 1 - ((depth_foreground - min_val) / (max_val - min_val))
+    depth_normalized = (depth_normalized * 255).astype(np.uint8)
+
+    # Apply INFERNO colormap
+    depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_INFERNO)
+    result[mask] = depth_colored.reshape(-1, 3)
+
+    return result
+
+
+def visualize_normal_map(normal_crop: np.ndarray, seg_mask: np.ndarray = None) -> np.ndarray:
+    """
+    Visualize normal map using official Sapiens approach.
+
+    Normalizes vectors to unit length and maps [-1, 1] to [0, 255].
+    Background is black (masked regions set to -1 which maps to 0).
+
+    Args:
+        normal_crop: Raw normal vectors (3, H, W) in [-1, 1] range
+        seg_mask: Optional segmentation mask (H, W), foreground > 0
+
+    Returns:
+        BGR image (H, W, 3)
+    """
+    # Transpose to (H, W, 3)
+    normal_hwc = normal_crop.transpose(1, 2, 0)
+
+    # Normalize to unit length
+    normal_norm = np.linalg.norm(normal_hwc, axis=-1, keepdims=True)
+    normal_normalized = normal_hwc / (normal_norm + 1e-5)
+
+    # Apply mask for black background
+    if seg_mask is not None:
+        normal_normalized[seg_mask == 0] = -1  # Maps to black (0)
+    else:
+        # Fallback: areas with near-zero magnitude become black
+        normal_normalized[normal_norm[..., 0] < 0.1] = -1
+
+    # Convert [-1, 1] to [0, 255]
+    normal_vis = ((normal_normalized + 1) / 2 * 255).astype(np.uint8)
+
+    # RGB to BGR for OpenCV
+    return normal_vis[:, :, ::-1]
+
+
 class SapiensEstimator:
     """Unified Estimator for Sapiens tasks with JAX acceleration."""
 

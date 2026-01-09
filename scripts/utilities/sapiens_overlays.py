@@ -29,7 +29,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 from pose_pipeline.pipeline import Video, PersonBbox
-from pose_pipeline.wrappers.sapiens import SapiensEstimator
+from pose_pipeline.wrappers.sapiens import SapiensEstimator, visualize_depth_map, visualize_normal_map
 from sapiens_eqx.inference.demo_utils import box_to_center_scale, get_affine_transform
 
 # Sapiens Goliath Palette (RGB) - 28 classes
@@ -193,8 +193,8 @@ def visualize_pose(frame, keypoints, present, bbox, img_size, alpha=0.8):
     return frame
 
 
-def visualize_depth(frame, depth_crop, present, bbox, img_size, alpha=0.6):
-    """Render depth map with mean-color background (no original frame blending)."""
+def visualize_depth(frame, depth_crop, present, bbox, img_size, seg_mask=None):
+    """Render depth map with Sapiens-style visualization (gray background, INFERNO colormap)."""
     if not present or depth_crop is None:
         return np.zeros_like(frame)
 
@@ -204,95 +204,55 @@ def visualize_depth(frame, depth_crop, present, bbox, img_size, alpha=0.6):
     # Resize depth to crop size
     depth_resized = cv2.resize(depth_crop, (img_size[1], img_size[0]), interpolation=cv2.INTER_LINEAR)
 
-    # Normalize depth to 0-255
-    valid_mask = depth_resized > 0
-    if valid_mask.any():
-        d_min, d_max = depth_resized[valid_mask].min(), depth_resized[valid_mask].max()
-        if d_max > d_min:
-            depth_norm = ((depth_resized - d_min) / (d_max - d_min) * 255).astype(np.uint8)
-        else:
-            depth_norm = np.zeros_like(depth_resized, dtype=np.uint8)
-    else:
-        return np.zeros_like(frame)
+    # Resize seg_mask if provided
+    seg_resized = None
+    if seg_mask is not None:
+        seg_resized = cv2.resize(seg_mask, (img_size[1], img_size[0]), interpolation=cv2.INTER_NEAREST)
 
-    # Apply colormap
-    depth_colored = cv2.applyColorMap(depth_norm, cv2.COLORMAP_TURBO)
+    # Use official Sapiens visualization (INFERNO colormap, inverted depth, gray background)
+    depth_vis = visualize_depth_map(depth_resized, seg_resized, background_color=100)
 
-    # Compute mean color of valid region for background fill
-    mean_color = depth_colored[valid_mask].mean(axis=0).astype(np.uint8)
-
-    # Warp back to original coordinates with mean color as border
+    # Warp back to original coordinates with gray background
     warped_depth = cv2.warpAffine(
-        depth_colored, inv_trans, (width, height),
+        depth_vis, inv_trans, (width, height),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
-        borderValue=tuple(int(c) for c in mean_color)
+        borderValue=(100, 100, 100)  # Gray background
     )
 
-    # Create mask and fill remaining background with mean color
-    warped_mask = cv2.warpAffine(
-        valid_mask.astype(np.uint8) * 255, inv_trans, (width, height),
-        flags=cv2.INTER_NEAREST,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=0
-    )
-
-    # Fill background with mean color
-    result = warped_depth.copy()
-    result[warped_mask == 0] = mean_color
-
-    return result
+    return warped_depth
 
 
-def visualize_normal(frame, normal_crop, present, bbox, img_size, alpha=0.6):
-    """Render normal map with mean-color background (no original frame blending)."""
+def visualize_normal(frame, normal_crop, present, bbox, img_size, seg_mask=None):
+    """Render normal map with Sapiens-style visualization (black background, unit normalized)."""
     if not present or normal_crop is None:
         return np.zeros_like(frame)
 
     height, width = frame.shape[:2]
     inv_trans = get_inverse_transform(bbox, img_size)
 
-    # normal_crop is (3, H, W) in range [-1, 1], convert to (H, W, 3) RGB
-    normal_resized = cv2.resize(
-        normal_crop.transpose(1, 2, 0),
-        (img_size[1], img_size[0]),
-        interpolation=cv2.INTER_LINEAR
-    )
+    # Resize normal to crop size (need to transpose, resize, transpose back)
+    normal_hwc = normal_crop.transpose(1, 2, 0)
+    normal_resized = cv2.resize(normal_hwc, (img_size[1], img_size[0]), interpolation=cv2.INTER_LINEAR)
+    normal_resized_chw = normal_resized.transpose(2, 0, 1)
 
-    # Convert normals to RGB: map [-1, 1] to [0, 255]
-    normal_rgb = ((normal_resized + 1) / 2 * 255).clip(0, 255).astype(np.uint8)
-    normal_bgr = cv2.cvtColor(normal_rgb, cv2.COLOR_RGB2BGR)
+    # Resize seg_mask if provided
+    seg_resized = None
+    if seg_mask is not None:
+        seg_resized = cv2.resize(seg_mask, (img_size[1], img_size[0]), interpolation=cv2.INTER_NEAREST)
 
-    # Create valid mask
-    valid_mask = np.abs(normal_resized).sum(axis=2) > 0.1
+    # Use official Sapiens visualization (unit normalized, black background)
+    normal_vis = visualize_normal_map(normal_resized_chw, seg_resized)
 
-    # Compute mean color of valid region for background fill
-    if valid_mask.any():
-        mean_color = normal_bgr[valid_mask].mean(axis=0).astype(np.uint8)
-    else:
-        mean_color = np.array([128, 128, 128], dtype=np.uint8)  # neutral gray
-
-    # Warp back to original coordinates with mean color as border
+    # Warp back to original coordinates with black background
     warped_normal = cv2.warpAffine(
-        normal_bgr, inv_trans, (width, height),
+        normal_vis, inv_trans, (width, height),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
-        borderValue=tuple(int(c) for c in mean_color)
+        borderValue=(0, 0, 0)  # Black background
     )
 
-    # Create warped mask
-    warped_mask = cv2.warpAffine(
-        (valid_mask.astype(np.uint8) * 255), inv_trans, (width, height),
-        flags=cv2.INTER_NEAREST,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=0
-    )
-
-    # Fill background with mean color
-    result = warped_normal.copy()
-    result[warped_mask == 0] = mean_color
-
-    return result
+    return warped_normal
 
 
 def visualize_seg(frame, seg_mask, present, bbox, img_size, alpha=0.6):
@@ -381,6 +341,15 @@ def create_tiled_video(video_path, results, bboxes, present, output_path,
         bbox = bboxes[i]
         is_present = present[i]
 
+        # Get segmentation mask for this frame (used by depth/normal visualization)
+        seg_mask = None
+        if 'segmentation' in results:
+            seg_data = results['segmentation']
+            if isinstance(seg_data, np.ndarray) and i < len(seg_data):
+                seg_mask = seg_data[i]
+            elif isinstance(seg_data, list) and i < len(seg_data):
+                seg_mask = seg_data[i]
+
         frame_pose = visualize_pose(
             frame.copy(),
             results.get('keypoints', [None] * num_frames)[i] if 'keypoints' in results else None,
@@ -390,18 +359,20 @@ def create_tiled_video(video_path, results, bboxes, present, output_path,
         frame_depth = visualize_depth(
             frame.copy(),
             results.get('depth', [None] * num_frames)[i] if 'depth' in results else None,
-            is_present, bbox, img_size
+            is_present, bbox, img_size,
+            seg_mask=seg_mask  # Pass segmentation mask for clean background
         )
 
         frame_normal = visualize_normal(
             frame.copy(),
             results.get('normal', [None] * num_frames)[i] if 'normal' in results else None,
-            is_present, bbox, img_size
+            is_present, bbox, img_size,
+            seg_mask=seg_mask  # Pass segmentation mask for clean background
         )
 
         frame_seg = visualize_seg(
             frame.copy(),
-            results.get('segmentation', [None] * num_frames)[i] if 'segmentation' in results else None,
+            seg_mask,
             is_present, bbox, img_size
         )
 
@@ -466,7 +437,7 @@ def find_video_key(filename, project=None, tracking_method=21, video_subject_id=
     raise ValueError(f"No matching video found for filename '{filename}'")
 
 
-def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, video_subject_id=0):
+def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, video_subject_id=0, max_frames=None):
     """Run all four Sapiens modes on a video and create tiled visualization."""
     # Find the video key
     key = find_video_key(filename, project, tracking_method, video_subject_id)
@@ -475,7 +446,13 @@ def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, vi
     # Fetch video and bboxes
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
     print(f"Video path: {video_path}")
-    print(f"Frames: {len(present)}, Present: {present.sum()}")
+    print(f"Total frames: {len(present)}, Present: {present.sum()}")
+
+    # Limit frames if specified
+    if max_frames is not None and max_frames < len(present):
+        bboxes = bboxes[:max_frames]
+        present = present[:max_frames]
+        print(f"Limiting to first {max_frames} frames")
 
     # Run each task sequentially to avoid OOM
     all_results = {}
@@ -494,7 +471,7 @@ def run_all_modes(filename, project=None, variant="0.3b", tracking_method=21, vi
         for key_name, value in results.items():
             if value is not None:
                 if isinstance(value, np.ndarray):
-                    print(f"  {key_name}: shape={value.shape}, dtype={value.dtype}")
+                    print(f"  {key_name}: shape={value.shape}, dtype={value.dtype}, min={value.min()}, max={value.max()}")
                 elif isinstance(value, list):
                     non_none = sum(1 for v in value if v is not None)
                     print(f"  {key_name}: list of {len(value)} items, {non_none} non-None")
@@ -543,6 +520,12 @@ def main():
         default=0,
         help="Video subject ID (default: 0)"
     )
+    parser.add_argument(
+        "--max-frames", "-m",
+        type=int,
+        default=None,
+        help="Maximum number of frames to process (default: all)"
+    )
 
     args = parser.parse_args()
 
@@ -551,7 +534,8 @@ def main():
         project=args.project,
         variant=args.variant,
         tracking_method=args.tracking_method,
-        video_subject_id=args.subject_id
+        video_subject_id=args.subject_id,
+        max_frames=args.max_frames
     )
 
 
