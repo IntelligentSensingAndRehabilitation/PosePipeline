@@ -2496,6 +2496,7 @@ class SAM3DBodyMethodLookup(dj.Lookup):
     contents = [
         {"sam3d_method": 0, "sam3d_method_name": "jax"},
         {"sam3d_method": 1, "sam3d_method_name": "torch_dinov3"},
+        {"sam3d_method": 2, "sam3d_method_name": "jax_hands"},
     ]
 
 
