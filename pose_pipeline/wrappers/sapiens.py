@@ -14,9 +14,18 @@ from typing import Dict, Any, List, Tuple
 
 NUM_KEYPOINTS = 308
 
-def get_joint_names():
+def get_joint_names(normalize=True):
+    """Return Sapiens Goliath 308 joint names.
+
+    Args:
+        normalize: If True (default), convert to Title Case (left_hip -> Left Hip)
+                   to match normalized_joint_name_dictionary convention used elsewhere.
+                   If False, return original Sapiens naming (lowercase with underscores).
+    """
     from sapiens_eqx import GOLIATH_308_KEYPOINT_NAMES
-    return GOLIATH_308_KEYPOINT_NAMES
+    if normalize:
+        return [name.replace('_', ' ').title() for name in GOLIATH_308_KEYPOINT_NAMES]
+    return list(GOLIATH_308_KEYPOINT_NAMES)
 
 
 def visualize_depth_map(depth_crop: np.ndarray, seg_mask: np.ndarray = None, background_color: int = 100) -> np.ndarray:

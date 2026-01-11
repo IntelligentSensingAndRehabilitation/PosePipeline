@@ -1318,7 +1318,7 @@ class TopDownPerson(dj.Computed):
             LiftingPerson.insert1(entry,allow_direct_insert=True)
 
     @staticmethod
-    def joint_names(method="MMPose"):
+    def joint_names(method="MMPose", normalize=True):
         if method == "OpenPose":
             return OpenPosePerson.joint_names()
         elif method == "Bridging_COCO_25":
@@ -1333,7 +1333,7 @@ class TopDownPerson(dj.Computed):
         elif "Sapiens" in method:
             from .wrappers.sapiens import get_joint_names
 
-            return get_joint_names()
+            return get_joint_names(normalize=normalize)
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
