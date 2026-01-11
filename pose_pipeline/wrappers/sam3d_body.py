@@ -216,9 +216,8 @@ def process_sam3d_body(
     
     # Cleanup DataJoint temp file
     if "tmp" in str(video_path) and os.path.exists(video_path):
-        try: os.remove(video_path)
-        except: pass
-        
+        os.remove(video_path)
+
     return results
 
 def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, float] = (0.65, 0.74, 0.86)):
