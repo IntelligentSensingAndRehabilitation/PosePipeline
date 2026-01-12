@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Tuple
 
 NUM_KEYPOINTS = 308
 
+
 def get_joint_names(normalize=True):
     """Return Sapiens Goliath 308 joint names.
 
@@ -23,8 +24,9 @@ def get_joint_names(normalize=True):
                    If False, return original Sapiens naming (lowercase with underscores).
     """
     from sapiens_eqx import GOLIATH_308_KEYPOINT_NAMES
+
     if normalize:
-        return [name.replace('_', ' ').title() for name in GOLIATH_308_KEYPOINT_NAMES]
+        return [name.replace("_", " ").title() for name in GOLIATH_308_KEYPOINT_NAMES]
     return list(GOLIATH_308_KEYPOINT_NAMES)
 
 
@@ -330,13 +332,50 @@ class SapiensEstimator:
             cap.release()
 
 
+# Module-level estimator cache - holds at most one estimator
+# Evicts and attempts cleanup when config changes
+_current_estimator: SapiensEstimator | None = None
+_current_config: tuple | None = None
+
+
+def _get_estimator(variant: str, tasks: List[str]) -> SapiensEstimator:
+    """Get or create a cached SapiensEstimator, evicting on config change."""
+    global _current_estimator, _current_config
+
+    config = (variant, tuple(tasks))
+
+    if _current_config != config:
+        # Evict old estimator with cleanup attempt
+        if _current_estimator is not None:
+            del _current_estimator
+            import gc
+
+            gc.collect()
+            # JAX cleanup - not guaranteed but worth trying
+            try:
+                jax.clear_caches()
+                try:
+                    jax.clear_backends()  # type: ignore[attr-defined]
+                except AttributeError:
+                    pass  # Older JAX versions
+            except Exception:
+                pass
+
+        _current_estimator = SapiensEstimator(variant=variant, tasks=tasks)
+        _current_config = config
+
+    # At this point _current_estimator is guaranteed to be set
+    assert _current_estimator is not None
+    return _current_estimator
+
+
 def sapiens_top_down_person(key: Dict[str, Any], variant: str = "1b", tasks=["pose"]) -> np.ndarray:
     """Entry point for DataJoint TopDownPerson table."""
     from pose_pipeline.pipeline import Video, PersonBbox
 
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
 
-    estimator = SapiensEstimator(variant=variant, tasks=tasks)
+    estimator = _get_estimator(variant, tasks)
     results = estimator.predict_video(video_path, bboxes, present)
 
     # Clean up DataJoint temp file
