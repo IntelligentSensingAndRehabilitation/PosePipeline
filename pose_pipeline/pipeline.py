@@ -1027,7 +1027,8 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"},
         {"top_down_method": 30, "top_down_method_name": "Sapiens_0.3b_Goliath"},
         {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
-        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"}
+        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
+        {"top_down_method": 33, "top_down_method_name": "Sam3dBody_with_hands"},
     ]
 
 
@@ -1286,6 +1287,13 @@ class TopDownPerson(dj.Computed):
             variant = method_name.split("_")[1]
             key["keypoints"] = sapiens_top_down_person(key, variant=variant)
 
+        elif method_name == "Sam3dBody_with_hands":
+            keypoints2d = (SAM3DBody & key & "sam3d_method=2").fetch1("keypoints_2d")
+            keypoints2d_with_conf = np.concatenate(
+                [keypoints2d, np.ones((keypoints2d.shape[0], keypoints2d.shape[1], 1))], axis=-1
+            )
+            key["keypoints"] = keypoints2d_with_conf
+
         else:
             raise Exception("Method not implemented")
 
@@ -1330,10 +1338,20 @@ class TopDownPerson(dj.Computed):
 
             return normalized_joint_name_dictionary["bml_movi_87"]
 
+        elif method == "Sapiens_1b_Goliath":
+            from pose_pipeline.wrappers.sapiens import goliath_308_keypoint_names
+
+            return goliath_308_keypoint_names
+
         elif "Sapiens" in method:
             from .wrappers.sapiens import get_joint_names
 
             return get_joint_names(normalize=normalize)
+
+        elif method == "Sam3dBody_with_hands":
+            from .wrappers.sam3d_body import MHR70_KEYPOINT_NAMES
+
+            return MHR70_KEYPOINT_NAMES
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
@@ -1472,7 +1490,8 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 18, "lifting_method_name": "Bridging_ExtDetector_COCO_25"},
         {"lifting_method": 19, "lifting_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"lifting_method": 20, "lifting_method_name": "Bridging_ExtDetector_smpl+head_30"},
-        {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"}
+        {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
+        {"lifting_method": 33, "lifting_method_name": "Sam3dBody_with_hands"},
     ]
 
 
@@ -1654,7 +1673,14 @@ class LiftingPerson(dj.Computed):
             # not capture this
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
-            
+
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands":
+            keypoints3d = (SAM3DBody & key & "sam3d_method=2").fetch1("keypoints_3d")
+            keypoints3d_with_conf = np.concatenate(
+                [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
+            )
+            results = {"keypoints_3d": keypoints3d_with_conf[:, :, :], "keypoints_valid": keypoints3d_with_conf[:, :, -1] > 0.5}
+
         else:
             raise Exception(f"Method not implemented {key}")
 
