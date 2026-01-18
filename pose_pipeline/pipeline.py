@@ -1338,20 +1338,15 @@ class TopDownPerson(dj.Computed):
 
             return normalized_joint_name_dictionary["bml_movi_87"]
 
-        elif method == "Sapiens_1b_Goliath":
-            from pose_pipeline.wrappers.sapiens import goliath_308_keypoint_names
-
-            return goliath_308_keypoint_names
-
         elif "Sapiens" in method:
             from .wrappers.sapiens import get_joint_names
 
             return get_joint_names(normalize=normalize)
 
         elif method == "Sam3dBody_with_hands":
-            from .wrappers.sam3d_body import MHR70_KEYPOINT_NAMES
+            from .wrappers.sam3d_body import get_joint_names
 
-            return MHR70_KEYPOINT_NAMES
+            return get_joint_names(normalize=normalize)
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary

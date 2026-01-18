@@ -84,6 +84,22 @@ MHR70_KEYPOINT_NAMES = [
     "neck",
 ]
 
+
+def get_joint_names(normalize=True):
+    """Return MHR 70 joint names.
+
+    Args:
+        normalize: If True (default), convert to Title Case (left_hip -> Left Hip)
+                   to match normalized_joint_name_dictionary convention used elsewhere.
+                   If False, return original naming (lowercase with underscores).
+    """
+
+    if normalize:
+        names = [name.replace("_", " ").title() for name in MHR70_KEYPOINT_NAMES]
+        return list(names)
+    else:
+        return list(MHR70_KEYPOINT_NAMES)
+
 def is_jax_available() -> bool:
     """Check if the JAX/Equinox backend package is installed."""
     import importlib.util
