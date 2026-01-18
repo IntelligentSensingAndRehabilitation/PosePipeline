@@ -1029,6 +1029,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
         {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
         {"top_down_method": 33, "top_down_method_name": "Sam3dBody_with_hands"},
+        {"top_down_method": 34, "top_down_method_name": "Sam3dBody_with_hands2"},
     ]
 
 
@@ -1294,6 +1295,13 @@ class TopDownPerson(dj.Computed):
             )
             key["keypoints"] = keypoints2d_with_conf
 
+        elif method_name == "Sam3dBody_with_hands2":
+            keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
+            keypoints2d_with_conf = np.concatenate(
+                [keypoints2d, np.ones((keypoints2d.shape[0], keypoints2d.shape[1], 1))], axis=-1
+            )
+            key["keypoints"] = keypoints2d_with_conf
+
         else:
             raise Exception("Method not implemented")
 
@@ -1343,7 +1351,7 @@ class TopDownPerson(dj.Computed):
 
             return get_joint_names(normalize=normalize)
 
-        elif method == "Sam3dBody_with_hands":
+        elif "Sam3dBody" in method:
             from .wrappers.sam3d_body import get_joint_names
 
             return get_joint_names(normalize=normalize)
@@ -1487,6 +1495,7 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 20, "lifting_method_name": "Bridging_ExtDetector_smpl+head_30"},
         {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
         {"lifting_method": 33, "lifting_method_name": "Sam3dBody_with_hands"},
+        {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
     ]
 
 
@@ -1671,6 +1680,13 @@ class LiftingPerson(dj.Computed):
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands":
             keypoints3d = (SAM3DBody & key & "sam3d_method=2").fetch1("keypoints_3d")
+            keypoints3d_with_conf = np.concatenate(
+                [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
+            )
+            results = {"keypoints_3d": keypoints3d_with_conf[:, :, :], "keypoints_valid": keypoints3d_with_conf[:, :, -1] > 0.5}
+
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
+            keypoints3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
             keypoints3d_with_conf = np.concatenate(
                 [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
             )
@@ -2518,6 +2534,7 @@ class SAM3DBodyMethodLookup(dj.Lookup):
         {"sam3d_method": 0, "sam3d_method_name": "jax"},
         {"sam3d_method": 1, "sam3d_method_name": "torch_dinov3"},
         {"sam3d_method": 2, "sam3d_method_name": "jax_hands"},
+        {"sam3d_method": 3, "sam3d_method_name": "jax_hands2"},
     ]
 
 

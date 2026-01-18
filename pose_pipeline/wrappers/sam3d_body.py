@@ -282,7 +282,7 @@ def process_sam3d_body(
     """
     from pose_pipeline import PersonBbox, Video
     
-    if method_name in ("jax", "jax_hands") and not is_jax_available():
+    if method_name in ("jax", "jax_hands", "jax_hands2") and not is_jax_available():
         raise ImportError("JAX backend requested but sam3d_body_eqx not installed.")
     if method_name == "torch_dinov3" and not is_pytorch_available():
         raise ImportError("PyTorch backend requested but sam_3d_body not installed.")
@@ -294,6 +294,8 @@ def process_sam3d_body(
     if method_name == "jax":
         results = process_sam3d_jax(video_path, bboxes, present, use_hands=False)
     elif method_name == "jax_hands":
+        results = process_sam3d_jax(video_path, bboxes, present, use_hands=True)
+    elif method_name == "jax_hands2":
         results = process_sam3d_jax(video_path, bboxes, present, use_hands=True)
     elif method_name == "torch_dinov3":
         results = process_sam3d_pytorch(video_path, bboxes, present, repo_id="facebook/sam-3d-body-dinov3")
