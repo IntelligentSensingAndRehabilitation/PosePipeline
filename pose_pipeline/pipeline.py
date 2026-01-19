@@ -1351,7 +1351,7 @@ class TopDownPerson(dj.Computed):
 
             return get_joint_names(normalize=normalize)
 
-        elif "Sam3dBody" in method:
+        elif method == "Sam3dBody_with_hands2":
             from .wrappers.sam3d_body import get_joint_names
 
             return get_joint_names(normalize=normalize)
