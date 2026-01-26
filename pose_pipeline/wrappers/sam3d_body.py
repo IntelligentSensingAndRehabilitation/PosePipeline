@@ -9,6 +9,8 @@ from typing import Optional, Literal, Dict, Tuple, Any
 import cv2
 import numpy as np
 from tqdm import tqdm
+import json
+from pathlib import Path
 
 
 MHR70_KEYPOINT_NAMES = [
@@ -99,6 +101,149 @@ def get_joint_names(normalize=True):
         return list(names)
     else:
         return list(MHR70_KEYPOINT_NAMES)
+
+
+def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints):
+    """
+    Extract BML MOBI 87 keypoints as a single array with automatic 2D / 3D handling from given SAM3D outputs.
+
+    Parameters
+    ----------
+    SAM_to_movi_dict : dict
+        Parsed JSON dictionary (order preserved)
+    mesh : np.ndarray
+        Shape: (num_frames, num_vertices, 3)
+    keypoints : np.ndarray
+        Shape: (num_frames, 70, D) where D is 2 or 3
+
+    Returns
+    -------
+    movi_kp : np.ndarray
+        Shape: (num_frames, 87, D), ordered by JSON key order
+    """
+    num_frames = mesh.shape[0]
+    D = keypoints.shape[-1]  # 2 or 3
+    num_joints = len(SAM_to_movi_dict)
+
+    if D not in (2, 3):
+        raise ValueError(f"Expected keypoints to be 2D or 3D, got D={D}")
+
+    movi_kp = np.zeros((num_frames, num_joints, D), dtype=mesh.dtype)
+
+    for j, (joint_name, joint_info) in enumerate(SAM_to_movi_dict.items()):
+        match_type = joint_info["match_type"]
+        idx = joint_info["index"]
+
+        if match_type == "vertex":
+            # Use mesh vertices, slicing to match dimensionality
+            movi_kp[:, j, :] = mesh[:, idx, :D]
+
+        elif match_type == "sam3d_joint":
+            # Use provided keypoints directly
+            movi_kp[:, j, :] = keypoints[:, idx, :]
+
+        else:
+            raise ValueError(
+                f"Unknown match_type '{match_type}' for joint '{joint_name}'"
+            )
+
+    return movi_kp
+
+sam_vertex_movi_names = [
+    "backneck",
+    "upperback",
+    "clavicle",
+    "sternum",
+    "umbilicus",
+    "lfronthead",
+    "lbackhead",
+    "lback",
+    "lshom",
+    "lupperarm",
+    "lelbm",
+    "lforearm",
+    "lwrithumbside",
+    "lwripinkieside",
+    "lfin",
+    "lasis",
+    "lpsis",
+    "lfrontthigh",
+    "lthigh",
+    "lknem",
+    "lankm",
+    "LHeel",
+    "lfifthmetatarsal",
+    "LBigToe",
+    "lcheek",
+    "lbreast",
+    "lelbinner",
+    "lwaist",
+    "lthumb",
+    "lfrontinnerthigh",
+    "linnerknee",
+    "lshin",
+    "lfirstmetatarsal",
+    "lfourthtoe",
+    "lscapula",
+    "lbum",
+    "rfronthead",
+    "rbackhead",
+    "rback",
+    "rshom",
+    "rupperarm",
+    "relbm",
+    "rforearm",
+    "rwrithumbside",
+    "rwripinkieside",
+    "rfin",
+    "rasis",
+    "rpsis",
+    "rfrontthigh",
+    "rthigh",
+    "rknem",
+    "rankm",
+    "RHeel",
+    "rfifthmetatarsal",
+    "RBigToe",
+    "rcheek",
+    "rbreast",
+    "relbinner",
+    "rwaist",
+    "rthumb",
+    "rfrontinnerthigh",
+    "rinnerknee",
+    "rshin",
+    "rfirstmetatarsal",
+    "rfourthtoe",
+    "rscapula",
+    "rbum",
+    "Head",
+    "mhip",
+    "CHip",
+    "Neck",
+    "LAnkle",
+    "LElbow",
+    "LHip",
+    "LHand",
+    "LKnee",
+    "LShoulder",
+    "LWrist",
+    "LFoot",
+    "RAnkle",
+    "RElbow",
+    "RHip",
+    "RHand",
+    "RKnee",
+    "RShoulder",
+    "RWrist",
+    "RFoot",
+]
+
+def load_kp_vertex_mapping():
+    path = Path(__file__).parent / "kp_vertex_mapping_final.json"
+    with open(path, "r") as f:
+        return json.load(f)
+
 
 def is_jax_available() -> bool:
     """Check if the JAX/Equinox backend package is installed."""

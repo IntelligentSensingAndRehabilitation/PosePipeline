@@ -1030,6 +1030,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
         {"top_down_method": 33, "top_down_method_name": "Sam3dBody_with_hands"},
         {"top_down_method": 34, "top_down_method_name": "Sam3dBody_with_hands2"},
+        {"top_down_method": 35, "top_down_method_name": "Sam3dBody_movi87"},
     ]
 
 
@@ -1301,6 +1302,18 @@ class TopDownPerson(dj.Computed):
                 [keypoints2d, np.ones((keypoints2d.shape[0], keypoints2d.shape[1], 1))], axis=-1
             )
             key["keypoints"] = keypoints2d_with_conf
+        
+        elif method_name == "Sam3dBody_movi87":
+            from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
+
+            mhr_dict = load_kp_vertex_mapping()
+            mesh = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices")
+            keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
+            keypoints2d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh, keypoints2d)
+            keypoints2d_movi_with_conf = np.concatenate(
+                [keypoints2d_movi, np.ones((keypoints2d_movi.shape[0], keypoints2d_movi.shape[1], 1))], axis=-1
+            )
+            key["keypoints"] = keypoints2d_movi_with_conf
 
         else:
             raise Exception("Method not implemented")
@@ -1355,6 +1368,11 @@ class TopDownPerson(dj.Computed):
             from .wrappers.sam3d_body import get_joint_names
 
             return get_joint_names(normalize=normalize)
+
+        elif method == "Sam3dBody_movi87":
+            from .wrappers.sam3d_body import sam_vertex_movi_names
+
+            return sam_vertex_movi_names
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
@@ -1496,6 +1514,7 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
         {"lifting_method": 33, "lifting_method_name": "Sam3dBody_with_hands"},
         {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
+        {"lifting_method": 35, "lifting_method_name": "Sam3dBody_movi87"},
     ]
 
 
@@ -1691,6 +1710,18 @@ class LiftingPerson(dj.Computed):
                 [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
             )
             results = {"keypoints_3d": keypoints3d_with_conf[:, :, :], "keypoints_valid": keypoints3d_with_conf[:, :, -1] > 0.5}
+        
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
+            from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
+
+            mhr_dict = load_kp_vertex_mapping()
+            mesh = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices")
+            keypoints3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
+            keypoints3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh, keypoints3d)
+            keypoints3d_movi_with_conf = np.concatenate(
+                [keypoints3d_movi, np.ones((keypoints3d_movi.shape[0], keypoints3d_movi.shape[1], 1))], axis=-1
+            )
+            results = {"keypoints_3d": keypoints3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints3d_movi_with_conf[:, :, -1] > 0.5}
 
         else:
             raise Exception(f"Method not implemented {key}")
