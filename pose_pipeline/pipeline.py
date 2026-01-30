@@ -1028,7 +1028,6 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 30, "top_down_method_name": "Sapiens_0.3b_Goliath"},
         {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
         {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
-        {"top_down_method": 33, "top_down_method_name": "Sam3dBody_with_hands"},
         {"top_down_method": 34, "top_down_method_name": "Sam3dBody_with_hands2"},
         {"top_down_method": 35, "top_down_method_name": "Sam3dBody_movi87"},
     ]
@@ -1289,13 +1288,6 @@ class TopDownPerson(dj.Computed):
             variant = method_name.split("_")[1]
             key["keypoints"] = sapiens_top_down_person(key, variant=variant)
 
-        elif method_name == "Sam3dBody_with_hands":
-            keypoints2d = (SAM3DBody & key & "sam3d_method=2").fetch1("keypoints_2d")
-            keypoints2d_with_conf = np.concatenate(
-                [keypoints2d, np.ones((keypoints2d.shape[0], keypoints2d.shape[1], 1))], axis=-1
-            )
-            key["keypoints"] = keypoints2d_with_conf
-
         elif method_name == "Sam3dBody_with_hands2":
             keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
             keypoints2d_with_conf = np.concatenate(
@@ -1307,13 +1299,13 @@ class TopDownPerson(dj.Computed):
             from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
 
             mhr_dict = load_kp_vertex_mapping()
-            mesh = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices")
-            keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
-            keypoints2d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh, keypoints2d)
-            keypoints2d_movi_with_conf = np.concatenate(
-                [keypoints2d_movi, np.ones((keypoints2d_movi.shape[0], keypoints2d_movi.shape[1], 1))], axis=-1
+            mesh_3d, keypoints_2d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            keypoints_2d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_2d, camera_t, focal_length, (height,width))
+            keypoints_2d_movi_with_conf = np.concatenate(
+                [keypoints_2d_movi, np.ones((keypoints_2d_movi.shape[0], keypoints_2d_movi.shape[1], 1))], axis=-1
             )
-            key["keypoints"] = keypoints2d_movi_with_conf
+            key["keypoints"] = keypoints_2d_movi_with_conf
 
         else:
             raise Exception("Method not implemented")
@@ -1512,7 +1504,6 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 19, "lifting_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"lifting_method": 20, "lifting_method_name": "Bridging_ExtDetector_smpl+head_30"},
         {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
-        {"lifting_method": 33, "lifting_method_name": "Sam3dBody_with_hands"},
         {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
         {"lifting_method": 35, "lifting_method_name": "Sam3dBody_movi87"},
     ]
@@ -1697,12 +1688,6 @@ class LiftingPerson(dj.Computed):
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
 
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands":
-            keypoints3d = (SAM3DBody & key & "sam3d_method=2").fetch1("keypoints_3d")
-            keypoints3d_with_conf = np.concatenate(
-                [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
-            )
-            results = {"keypoints_3d": keypoints3d_with_conf[:, :, :], "keypoints_valid": keypoints3d_with_conf[:, :, -1] > 0.5}
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
             keypoints3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
@@ -1715,13 +1700,12 @@ class LiftingPerson(dj.Computed):
             from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
 
             mhr_dict = load_kp_vertex_mapping()
-            mesh = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices")
-            keypoints3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
-            keypoints3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh, keypoints3d)
-            keypoints3d_movi_with_conf = np.concatenate(
-                [keypoints3d_movi, np.ones((keypoints3d_movi.shape[0], keypoints3d_movi.shape[1], 1))], axis=-1
+            mesh_3d, keypoints_3d = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d")
+            keypoints_3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_3d)
+            keypoints_3d_movi_with_conf = np.concatenate(
+                [keypoints_3d_movi, np.ones((keypoints_3d_movi.shape[0], keypoints_3d_movi.shape[1], 1))], axis=-1
             )
-            results = {"keypoints_3d": keypoints3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints3d_movi_with_conf[:, :, -1] > 0.5}
+            results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
 
         else:
             raise Exception(f"Method not implemented {key}")

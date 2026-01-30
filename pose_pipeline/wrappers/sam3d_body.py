@@ -103,7 +103,45 @@ def get_joint_names(normalize=True):
         return list(MHR70_KEYPOINT_NAMES)
 
 
-def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints):
+def project_to_2d_mhr(
+    points_3d: np.ndarray,
+    camera_t: np.ndarray,
+    focal_length: float,
+    image_size: Tuple[int, int],
+) -> np.ndarray:
+    """Project 3D points to 2D using MHR weak-perspective camera model.
+
+    MHR uses a weak-perspective camera where:
+    - Points are in camera-relative coordinates
+    - camera_t is the camera translation (body center offset)
+    - focal_length scales the projection
+    - Principal point is at image center
+
+    Args:
+        points_3d: 3D points in MHR frame (K, 3)
+        camera_t: Camera translation (3,)
+        focal_length: Focal length scalar
+        image_size: (height, width) of image
+
+    Returns:
+        2D points (K, 2) in pixel coordinates
+    """
+    # Add camera translation to get camera-space coordinates
+    points_cam = points_3d + camera_t
+
+    # Weak perspective projection
+    # x_2d = f * x / z, y_2d = f * y / z
+    z = points_cam[:, 2:3] + 1e-8  # Avoid division by zero
+    points_2d = focal_length * points_cam[:, :2] / z
+
+    # Shift to image center (MHR convention)
+    h, w = image_size
+    points_2d = points_2d + np.array([w / 2, h / 2])
+
+    return points_2d
+
+
+def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints, camera_t=None, focal_length=None, image_size=None):
     """
     Extract BML MOBI 87 keypoints as a single array with automatic 2D / 3D handling from given SAM3D outputs.
 
@@ -115,6 +153,11 @@ def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints):
         Shape: (num_frames, num_vertices, 3)
     keypoints : np.ndarray
         Shape: (num_frames, 70, D) where D is 2 or 3
+    camera_t : np.ndarray from Sam3D camera translation
+        Shape: (num_frames, 3)
+    focal_length : float from Sam3D focal length
+    image_size : tuple
+        (height, width) of the input images used for Sam3D processing
 
     Returns
     -------
@@ -135,8 +178,14 @@ def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints):
         idx = joint_info["index"]
 
         if match_type == "vertex":
-            # Use mesh vertices, slicing to match dimensionality
-            movi_kp[:, j, :] = mesh[:, idx, :D]
+            if D == 2:          # Project mesh vertices to 2D using MHR camera model
+                vertex_3d = mesh[:, idx, :]             # (num_frames, 3)
+                camera_t0 = camera_t[0]                 # IF STATIC CAMERA: shape (3,)
+                focal_length0 = float(focal_length[0])  # IF STATIC CAMERA: scalar
+                vertex_2d = project_to_2d_mhr(vertex_3d, camera_t0, focal_length0, image_size)   # (num_frames, 2)                                               
+                movi_kp[:, j, :] = vertex_2d
+            else:                # Use 3D mesh vertices directly
+                movi_kp[:, j, :] = mesh[:, idx, :D]
 
         elif match_type == "sam3d_joint":
             # Use provided keypoints directly
@@ -240,7 +289,7 @@ sam_vertex_movi_names = [
 ]
 
 def load_kp_vertex_mapping():
-    path = Path(__file__).parent / "kp_vertex_mapping_final.json"
+    path = Path(__file__).parent / "sam3d_body_vertex_mapping.json"
     with open(path, "r") as f:
         return json.load(f)
 
