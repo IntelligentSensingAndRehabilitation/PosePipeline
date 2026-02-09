@@ -141,7 +141,7 @@ def project_to_2d_mhr(
     return points_2d
 
 
-def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints, camera_t=None, focal_length=None, image_size=None):
+def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints, camera_t, focal_length, image_size):
     """
     Extract BML MOBI 87 keypoints as a single array with automatic 2D / 3D handling from given SAM3D outputs.
 
@@ -171,6 +171,9 @@ def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints, camera_t=None, 
     if D not in (2, 3):
         raise ValueError(f"Expected keypoints to be 2D or 3D, got D={D}")
 
+    assert len(np.unique(focal_length)) == 1, "Expected focal length to be constant across frames for projection"
+    focal_length = focal_length[0] if isinstance(focal_length, np.ndarray) else focal_length
+
     movi_kp = np.zeros((num_frames, num_joints, D), dtype=mesh.dtype)
 
     for j, (joint_name, joint_info) in enumerate(SAM_to_movi_dict.items()):
@@ -180,9 +183,8 @@ def extract_movi87_kp_fromSAM(SAM_to_movi_dict, mesh, keypoints, camera_t=None, 
         if match_type == "vertex":
             if D == 2:          # Project mesh vertices to 2D using MHR camera model
                 vertex_3d = mesh[:, idx, :]             # (num_frames, 3)
-                camera_t0 = camera_t[0]                 # IF STATIC CAMERA: shape (3,)
-                focal_length0 = float(focal_length[0])  # IF STATIC CAMERA: scalar
-                vertex_2d = project_to_2d_mhr(vertex_3d, camera_t0, focal_length0, image_size)   # (num_frames, 2)                                               
+                camera_t = camera_t
+                vertex_2d = project_to_2d_mhr(vertex_3d, camera_t, focal_length, image_size)   # (num_frames, 2)                                               
                 movi_kp[:, j, :] = vertex_2d
             else:                # Use 3D mesh vertices directly
                 movi_kp[:, j, :] = mesh[:, idx, :D]
