@@ -43,8 +43,22 @@ def get_model():
         print("Loading MeTRAbs Model...")
         model_cache = os.environ.get("TFHUB_CACHE_DIR")
         print(f"Model cached in: {model_cache}")
-        METRABS_URL = "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_y4_384px_800k_28ds.tar.gz"
-        model = hub.load(METRABS_URL)
+        # Try bit.ly link first
+        METRABS_URL_SHORT = "https://bit.ly/metrabs_l"
+        METRABS_URL_FALLBACK = "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_y4_384px_800k_28ds.tar.gz"
+
+        model = None
+        for url in [METRABS_URL_SHORT, METRABS_URL_FALLBACK]:
+            try:
+                print(f"Attempting to load model from: {url}")
+                model = hub.load(url)
+                print(f"Successfully loaded model from: {url}")
+                break
+            except (tf.errors.InvalidArgumentError, ValueError, Exception) as e:
+                print(f"Failed to load from {url}: {e}")
+                if url == METRABS_URL_FALLBACK:
+                    raise Exception("Failed to load MeTRAbs model from both URLs")
+                continue
 
         model.per_skeleton_joint_names = {k: v.numpy() for k, v in model.per_skeleton_joint_names.items()}
         model.per_skeleton_indices = {k: v.numpy() for k, v in model.per_skeleton_indices.items()}
