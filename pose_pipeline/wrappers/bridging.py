@@ -54,7 +54,7 @@ def get_model():
                 model = hub.load(url)
                 print(f"Successfully loaded model from: {url}")
                 break
-            except (tf.errors.InvalidArgumentError, ValueError, Exception) as e:
+            except (Exception) as e:
                 print(f"Failed to load from {url}: {e}")
                 if url == METRABS_URL_FALLBACK:
                     raise Exception("Failed to load MeTRAbs model from both URLs")
