@@ -1700,8 +1700,9 @@ class LiftingPerson(dj.Computed):
             from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
 
             mhr_dict = load_kp_vertex_mapping()
-            mesh_3d, keypoints_3d = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d")
-            keypoints_3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_3d)
+            mesh_3d, keypoints_3d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            keypoints_3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_3d, camera_t, focal_length, (height,width))
             keypoints_3d_movi_with_conf = np.concatenate(
                 [keypoints_3d_movi, np.ones((keypoints_3d_movi.shape[0], keypoints_3d_movi.shape[1], 1))], axis=-1
             )
