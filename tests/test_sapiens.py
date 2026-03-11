@@ -2,9 +2,15 @@
 # and the PosePipeline wrapper can load and run inference.
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# Prevent JAX from preallocating the entire GPU — needed when sharing the GPU
+# with TensorFlow (e.g. MeTRAbs tests that run earlier in the suite).
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.45"
 
 import numpy as np
 import pytest
+
+pytestmark = pytest.mark.gpu
 
 
 def test_sapiens_eqx_import():
