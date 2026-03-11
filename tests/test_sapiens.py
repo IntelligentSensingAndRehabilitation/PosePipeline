@@ -2,10 +2,10 @@
 # and the PosePipeline wrapper can load and run inference.
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-# Prevent JAX from preallocating the entire GPU — needed when sharing the GPU
-# with TensorFlow (e.g. MeTRAbs tests that run earlier in the suite).
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.45"
+# Use on-demand GPU allocation so JAX and PyTorch don't fight TensorFlow
+# for GPU memory when tests run in the same suite.
+os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
+os.environ["TORCH_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 import numpy as np
 import pytest
