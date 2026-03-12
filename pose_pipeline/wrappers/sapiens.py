@@ -326,8 +326,13 @@ def sapiens_top_down_person(key: Dict[str, Any], variant: str = "1b", tasks=["po
 
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
 
+    # Auto-select batch size based on model variant to avoid GPU OOM.
+    # Larger variants need smaller batches (1b ~4.7GB constants + weights).
+    variant_batch_sizes = {"0.3b": 8, "0.6b": 4, "1b": 2, "2b": 1}
+    batch_size = variant_batch_sizes.get(variant, 2)
+
     estimator = SapiensEstimator(variant=variant, tasks=tasks)
-    results = estimator.predict_video(video_path, bboxes, present)
+    results = estimator.predict_video(video_path, bboxes, present, batch_size=batch_size)
 
     if "tmp" in str(video_path) and os.path.exists(video_path):
         try:
