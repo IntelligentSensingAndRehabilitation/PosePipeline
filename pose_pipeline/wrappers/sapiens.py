@@ -14,9 +14,20 @@ from typing import Dict, Any, List, Tuple
 
 NUM_KEYPOINTS = 308
 
-def get_joint_names():
+
+def get_joint_names(normalize=True):
+    """Return Sapiens Goliath 308 joint names.
+
+    Args:
+        normalize: If True (default), convert to Title Case (left_hip -> Left Hip)
+                   to match normalized_joint_name_dictionary convention used elsewhere.
+                   If False, return original Sapiens naming (lowercase with underscores).
+    """
     from sapiens_eqx import GOLIATH_308_KEYPOINT_NAMES
-    return GOLIATH_308_KEYPOINT_NAMES
+
+    if normalize:
+        return [name.replace("_", " ").title() for name in GOLIATH_308_KEYPOINT_NAMES]
+    return list(GOLIATH_308_KEYPOINT_NAMES)
 
 
 def visualize_depth_map(depth_crop: np.ndarray, seg_mask: np.ndarray = None, background_color: int = 100) -> np.ndarray:
@@ -176,148 +187,186 @@ class SapiensEstimator:
         from sapiens_eqx.inference.demo_utils import box_to_center_scale, get_affine_transform
 
         cap = cv2.VideoCapture(video_path)
-        num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        try:
+            num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        # Ensure bboxes match video frames
-        if len(bboxes) < num_frames:
-            num_frames = len(bboxes)
+            # Ensure bboxes match video frames
+            if len(bboxes) < num_frames:
+                num_frames = len(bboxes)
 
-        results = {t: [] for t in self.tasks}
+            results = {t: [] for t in self.tasks}
 
-        for i in tqdm(range(0, num_frames, batch_size), desc=f"Sapiens {self.variant}"):
-            batch_frames = []
-            batch_trans = []
-            batch_indices = []
+            for i in tqdm(range(0, num_frames, batch_size), desc=f"Sapiens {self.variant}"):
+                batch_frames = []
+                batch_trans = []
+                batch_indices = []
 
-            for j in range(i, min(i + batch_size, num_frames)):
-                ret, frame = cap.read()
-                if not ret:
-                    break
+                for j in range(i, min(i + batch_size, num_frames)):
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
 
-                if not present[j]:
-                    batch_indices.append(None)
-                    continue
+                    if not present[j]:
+                        batch_indices.append(None)
+                        continue
 
-                # Sapiens expected format [x1, y1, x2, y2]
-                # PosePipeline bboxes are [x, y, w, h]
-                x, y, w, h = bboxes[j]
-                x1, y1, x2, y2 = x, y, x + w, y + h
-                center, scale = box_to_center_scale(x1, y1, x2, y2)
-                trans = get_affine_transform(center, scale, (self.img_size[1], self.img_size[0]))
+                    # Sapiens expected format [x1, y1, x2, y2]
+                    # PosePipeline bboxes are [x, y, w, h]
+                    x, y, w, h = bboxes[j]
+                    x1, y1, x2, y2 = x, y, x + w, y + h
+                    center, scale = box_to_center_scale(x1, y1, x2, y2)
+                    trans = get_affine_transform(center, scale, (self.img_size[1], self.img_size[0]))
 
-                crop = cv2.warpAffine(
-                    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
-                    trans,
-                    (self.img_size[1], self.img_size[0]),
-                    flags=cv2.INTER_LINEAR,
-                )
-
-                # Preprocess
-                input_tensor = self.estimators[next(iter(self.estimators))].preprocess(crop)
-                batch_frames.append(input_tensor[0])
-                batch_trans.append(trans)
-                batch_indices.append(len(batch_frames) - 1)
-
-            if not batch_frames:
-                for t in self.tasks:
-                    results[t].extend([None] * (min(i + batch_size, num_frames) - i))
-                continue
-
-            # Padding for constant batch size to avoid JIT re-compilation
-            actual_len = len(batch_frames)
-            if actual_len < batch_size:
-                padding = [jnp.zeros_like(batch_frames[0])] * (batch_size - actual_len)
-                batch_tensor = jnp.stack(batch_frames + padding)
-            else:
-                batch_tensor = jnp.stack(batch_frames)
-
-            # Inference
-            batch_outputs = {}
-            if "pose" in self.tasks:
-                batch_outputs["pose"] = self._jit_pose(batch_tensor)
-            if "depth" in self.tasks:
-                batch_outputs["depth"] = self._jit_depth(batch_tensor)
-            if "normal" in self.tasks:
-                batch_outputs["normal"] = self._jit_normal(batch_tensor)
-            if "seg" in self.tasks:
-                batch_outputs["seg"] = self._jit_seg(batch_tensor)
-
-            # Post-process and map back
-            for idx_in_batch in range(min(i + batch_size, num_frames) - i):
-                res_idx = batch_indices[idx_in_batch]
-                if res_idx is None:
-                    for t in self.tasks:
-                        results[t].append(None)
-                    continue
-
-                trans = batch_trans[res_idx]
-                inv_trans = cv2.invertAffineTransform(trans)
-
-                if "pose" in self.tasks:
-                    kpts_crop, scores = batch_outputs["pose"][0][res_idx], batch_outputs["pose"][1][res_idx]
-                    kpts_crop = np.array(kpts_crop)
-                    scores = np.array(scores)
-
-                    # Scale back to crop size then to image
-                    h_out, w_out = self.img_size[0] // 4, self.img_size[1] // 4
-                    kpts_crop[:, 0] *= self.img_size[1] / w_out
-                    kpts_crop[:, 1] *= self.img_size[0] / h_out
-
-                    kpts_orig = cv2.transform(kpts_crop.reshape(-1, 1, 2), inv_trans).reshape(-1, 2)
-                    results["pose"].append(np.concatenate([kpts_orig, scores[:, None]], axis=1))
-
-                if "depth" in self.tasks:
-                    # Output is (batch, 1, H, W)
-                    depth_crop = np.array(batch_outputs["depth"][res_idx, 0])
-                    results["depth"].append(depth_crop)
-
-                if "normal" in self.tasks:
-                    # Output is (batch, 3, H, W) - surface normals in range [-1, 1]
-                    normal_crop = np.array(batch_outputs["normal"][res_idx])
-                    results["normal"].append(normal_crop)
-
-                if "seg" in self.tasks:
-                    # Output is (batch, num_classes, H, W) logits
-                    seg_logits = np.array(batch_outputs["seg"][res_idx])
-                    # Get class predictions via argmax
-                    seg_mask = np.argmax(seg_logits, axis=0).astype(np.uint8)
-                    # Resize to crop size
-                    seg_mask = cv2.resize(
-                        seg_mask, (self.img_size[1], self.img_size[0]), interpolation=cv2.INTER_NEAREST
+                    crop = cv2.warpAffine(
+                        cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
+                        trans,
+                        (self.img_size[1], self.img_size[0]),
+                        flags=cv2.INTER_LINEAR,
                     )
-                    results["seg"].append(seg_mask)
 
-        cap.release()
+                    # Preprocess
+                    input_tensor = self.estimators[next(iter(self.estimators))].preprocess(crop)
+                    batch_frames.append(input_tensor[0])
+                    batch_trans.append(trans)
+                    batch_indices.append(len(batch_frames) - 1)
 
-        # Standardize outputs
-        final_results = {}
-        if "pose" in self.tasks:
-            # Stack into (N, NUM_KEYPOINTS, 3)
-            K = NUM_KEYPOINTS
-            stacked = np.full((num_frames, K, 3), np.nan)
-            for idx, k in enumerate(results["pose"]):
-                if k is not None:
-                    stacked[idx] = k
-            final_results["keypoints"] = stacked
+                if not batch_frames:
+                    for t in self.tasks:
+                        results[t].extend([None] * (min(i + batch_size, num_frames) - i))
+                    continue
 
-        if "seg" in self.tasks:
-            # Stack into (N, H, W) with 255 for missing frames
-            H, W = self.img_size
-            stacked = np.full((num_frames, H, W), 255, dtype=np.uint8)
-            for idx, mask in enumerate(results["seg"]):
-                if mask is not None:
-                    stacked[idx] = mask
-            final_results["segmentation"] = stacked
+                # Padding for constant batch size to avoid JIT re-compilation
+                actual_len = len(batch_frames)
+                if actual_len < batch_size:
+                    padding = [jnp.zeros_like(batch_frames[0])] * (batch_size - actual_len)
+                    batch_tensor = jnp.stack(batch_frames + padding)
+                else:
+                    batch_tensor = jnp.stack(batch_frames)
 
-        if "depth" in self.tasks:
-            # Return list of depth crops (variable output size from model)
-            final_results["depth"] = results["depth"]
+                # Inference
+                batch_outputs = {}
+                if "pose" in self.tasks:
+                    batch_outputs["pose"] = self._jit_pose(batch_tensor)
+                if "depth" in self.tasks:
+                    batch_outputs["depth"] = self._jit_depth(batch_tensor)
+                if "normal" in self.tasks:
+                    batch_outputs["normal"] = self._jit_normal(batch_tensor)
+                if "seg" in self.tasks:
+                    batch_outputs["seg"] = self._jit_seg(batch_tensor)
 
-        if "normal" in self.tasks:
-            # Return list of normal crops (variable output size from model)
-            final_results["normal"] = results["normal"]
+                # Post-process and map back
+                for idx_in_batch in range(min(i + batch_size, num_frames) - i):
+                    res_idx = batch_indices[idx_in_batch]
+                    if res_idx is None:
+                        for t in self.tasks:
+                            results[t].append(None)
+                        continue
 
-        return final_results
+                    trans = batch_trans[res_idx]
+                    inv_trans = cv2.invertAffineTransform(trans)
+
+                    if "pose" in self.tasks:
+                        kpts_crop, scores = batch_outputs["pose"][0][res_idx], batch_outputs["pose"][1][res_idx]
+                        kpts_crop = np.array(kpts_crop)
+                        scores = np.array(scores)
+
+                        # Scale back to crop size then to image
+                        h_out, w_out = self.img_size[0] // 4, self.img_size[1] // 4
+                        kpts_crop[:, 0] *= self.img_size[1] / w_out
+                        kpts_crop[:, 1] *= self.img_size[0] / h_out
+
+                        kpts_orig = cv2.transform(kpts_crop.reshape(-1, 1, 2), inv_trans).reshape(-1, 2)
+                        results["pose"].append(np.concatenate([kpts_orig, scores[:, None]], axis=1))
+
+                    if "depth" in self.tasks:
+                        # Output is (batch, 1, H, W)
+                        depth_crop = np.array(batch_outputs["depth"][res_idx, 0])
+                        results["depth"].append(depth_crop)
+
+                    if "normal" in self.tasks:
+                        # Output is (batch, 3, H, W) - surface normals in range [-1, 1]
+                        normal_crop = np.array(batch_outputs["normal"][res_idx])
+                        results["normal"].append(normal_crop)
+
+                    if "seg" in self.tasks:
+                        # Output is (batch, num_classes, H, W) logits
+                        seg_logits = np.array(batch_outputs["seg"][res_idx])
+                        # Get class predictions via argmax
+                        seg_mask = np.argmax(seg_logits, axis=0).astype(np.uint8)
+                        # Resize to crop size
+                        seg_mask = cv2.resize(
+                            seg_mask, (self.img_size[1], self.img_size[0]), interpolation=cv2.INTER_NEAREST
+                        )
+                        results["seg"].append(seg_mask)
+
+            # Standardize outputs
+            final_results = {}
+            if "pose" in self.tasks:
+                # Stack into (N, NUM_KEYPOINTS, 3)
+                K = NUM_KEYPOINTS
+                stacked = np.full((num_frames, K, 3), np.nan)
+                for idx, k in enumerate(results["pose"]):
+                    if k is not None:
+                        stacked[idx] = k
+                final_results["keypoints"] = stacked
+
+            if "seg" in self.tasks:
+                # Stack into (N, H, W) with 255 for missing frames
+                H, W = self.img_size
+                stacked = np.full((num_frames, H, W), 255, dtype=np.uint8)
+                for idx, mask in enumerate(results["seg"]):
+                    if mask is not None:
+                        stacked[idx] = mask
+                final_results["segmentation"] = stacked
+
+            if "depth" in self.tasks:
+                # Return list of depth crops (variable output size from model)
+                final_results["depth"] = results["depth"]
+
+            if "normal" in self.tasks:
+                # Return list of normal crops (variable output size from model)
+                final_results["normal"] = results["normal"]
+
+            return final_results
+        finally:
+            cap.release()
+
+
+# Module-level estimator cache - holds at most one estimator
+# Evicts and attempts cleanup when config changes
+_current_estimator: SapiensEstimator | None = None
+_current_config: tuple | None = None
+
+
+def _get_estimator(variant: str, tasks: List[str]) -> SapiensEstimator:
+    """Get or create a cached SapiensEstimator, evicting on config change."""
+    global _current_estimator, _current_config
+
+    config = (variant, tuple(tasks))
+
+    if _current_config != config:
+        # Evict old estimator with cleanup attempt
+        if _current_estimator is not None:
+            del _current_estimator
+            import gc
+
+            gc.collect()
+            # JAX cleanup - not guaranteed but worth trying
+            try:
+                jax.clear_caches()
+                try:
+                    jax.clear_backends()  # type: ignore[attr-defined]
+                except AttributeError:
+                    pass  # Older JAX versions
+            except Exception:
+                pass
+
+        _current_estimator = SapiensEstimator(variant=variant, tasks=tasks)
+        _current_config = config
+
+    # At this point _current_estimator is guaranteed to be set
+    assert _current_estimator is not None
+    return _current_estimator
 
 
 def sapiens_top_down_person(key: Dict[str, Any], variant: str = "1b", tasks=["pose"]) -> np.ndarray:
@@ -326,13 +375,11 @@ def sapiens_top_down_person(key: Dict[str, Any], variant: str = "1b", tasks=["po
 
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
 
-    estimator = SapiensEstimator(variant=variant, tasks=tasks)
+    estimator = _get_estimator(variant, tasks)
     results = estimator.predict_video(video_path, bboxes, present)
 
+    # Clean up DataJoint temp file
     if "tmp" in str(video_path) and os.path.exists(video_path):
-        try:
-            os.remove(video_path)
-        except:
-            pass
+        os.remove(video_path)
 
     return results["keypoints"]

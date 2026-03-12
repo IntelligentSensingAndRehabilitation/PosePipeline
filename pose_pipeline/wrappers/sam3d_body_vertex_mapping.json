@@ -1,0 +1,959 @@
+{
+  "backneck": {
+    "match_type": "vertex",
+    "index": 5770,
+    "mean_dist_px": 4.694630167660434,
+    "confidence_weight": 0.6253379741480973,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 5770,
+      "mean_dist_px": 4.694630167660434
+    }
+  },
+  "upperback": {
+    "match_type": "vertex",
+    "index": 5753,
+    "mean_dist_px": 8.50177425264927,
+    "confidence_weight": 0.42733910446824624,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 5753,
+      "mean_dist_px": 8.50177425264927
+    }
+  },
+  "clavicle": {
+    "match_type": "vertex",
+    "index": 2853,
+    "mean_dist_px": 8.273867562102978,
+    "confidence_weight": 0.4371902796085057,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 2853,
+      "mean_dist_px": 8.273867562102978
+    }
+  },
+  "sternum": {
+    "match_type": "vertex",
+    "index": 5698,
+    "mean_dist_px": 7.491083354157144,
+    "confidence_weight": 0.47278793310394923,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 5698,
+      "mean_dist_px": 7.491083354157144
+    }
+  },
+  "umbilicus": {
+    "match_type": "vertex",
+    "index": 5711,
+    "mean_dist_px": 8.146157179306014,
+    "confidence_weight": 0.44280945840512786,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 5711,
+      "mean_dist_px": 8.146157179306014
+    }
+  },
+  "lfronthead": {
+    "match_type": "vertex",
+    "index": 2533,
+    "mean_dist_px": 8.462207893324829,
+    "confidence_weight": 0.42903327913030875,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 2533,
+      "mean_dist_px": 8.462207893324829
+    }
+  },
+  "lbackhead": {
+    "match_type": "vertex",
+    "index": 2375,
+    "mean_dist_px": 8.51828255079671,
+    "confidence_weight": 0.4266342223139032,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 2375,
+      "mean_dist_px": 8.51828255079671
+    }
+  },
+  "lback": {
+    "match_type": "vertex",
+    "index": 6242,
+    "mean_dist_px": 7.931432207829268,
+    "confidence_weight": 0.45242050049873345,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 6242,
+      "mean_dist_px": 7.931432207829268
+    }
+  },
+  "lshom": {
+    "match_type": "vertex",
+    "index": 6848,
+    "mean_dist_px": 5.147393841070427,
+    "confidence_weight": 0.5976563330623218,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 6848,
+      "mean_dist_px": 5.147393841070427
+    }
+  },
+  "lupperarm": {
+    "match_type": "vertex",
+    "index": 8125,
+    "mean_dist_px": 7.195457314620882,
+    "confidence_weight": 0.4869734224262922,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 8125,
+      "mean_dist_px": 7.195457314620882
+    }
+  },
+  "lelbm": {
+    "match_type": "vertex",
+    "index": 8379,
+    "mean_dist_px": 6.640672149081796,
+    "confidence_weight": 0.514753458187595,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 8379,
+      "mean_dist_px": 6.640672149081796
+    }
+  },
+  "lforearm": {
+    "match_type": "vertex",
+    "index": 8535,
+    "mean_dist_px": 6.647096421989625,
+    "confidence_weight": 0.5144228727179639,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 8535,
+      "mean_dist_px": 6.647096421989625
+    }
+  },
+  "lwrithumbside": {
+    "match_type": "vertex",
+    "index": 8895,
+    "mean_dist_px": 6.956628809122347,
+    "confidence_weight": 0.4987437306849854,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 8895,
+      "mean_dist_px": 6.956628809122347
+    }
+  },
+  "lwripinkieside": {
+    "match_type": "vertex",
+    "index": 8906,
+    "mean_dist_px": 8.25405928774368,
+    "confidence_weight": 0.43805713637246785,
+    "num_samples": 346,
+    "vertex_alternative": {
+      "index": 8906,
+      "mean_dist_px": 8.25405928774368
+    }
+  },
+  "lfin": {
+    "match_type": "vertex",
+    "index": 9216,
+    "mean_dist_px": 8.259978008963243,
+    "confidence_weight": 0.4377979392789585,
+    "num_samples": 346,
+    "vertex_alternative": {
+      "index": 9216,
+      "mean_dist_px": 8.259978008963243
+    }
+  },
+  "lasis": {
+    "match_type": "vertex",
+    "index": 6662,
+    "mean_dist_px": 8.309833494456557,
+    "confidence_weight": 0.4356207082530912,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 6662,
+      "mean_dist_px": 8.309833494456557
+    }
+  },
+  "lpsis": {
+    "match_type": "vertex",
+    "index": 5958,
+    "mean_dist_px": 13.162692378243833,
+    "confidence_weight": 0.268133781633166,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 5958,
+      "mean_dist_px": 13.162692378243833
+    }
+  },
+  "lfrontthigh": {
+    "match_type": "vertex",
+    "index": 11303,
+    "mean_dist_px": 12.952331196681241,
+    "confidence_weight": 0.27383402079409397,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 11303,
+      "mean_dist_px": 12.952331196681241
+    }
+  },
+  "lthigh": {
+    "match_type": "vertex",
+    "index": 6193,
+    "mean_dist_px": 9.629536790256791,
+    "confidence_weight": 0.38176361186635305,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 6193,
+      "mean_dist_px": 9.629536790256791
+    }
+  },
+  "lknem": {
+    "match_type": "vertex",
+    "index": 11546,
+    "mean_dist_px": 6.322420490796585,
+    "confidence_weight": 0.5313990416617572,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 11546,
+      "mean_dist_px": 6.322420490796585
+    }
+  },
+  "lankm": {
+    "match_type": "vertex",
+    "index": 12175,
+    "mean_dist_px": 6.882130994397675,
+    "confidence_weight": 0.5024731368716553,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 12175,
+      "mean_dist_px": 6.882130994397675
+    }
+  },
+  "LHeel": {
+    "match_type": "vertex",
+    "index": 12243,
+    "mean_dist_px": 7.800457513795652,
+    "confidence_weight": 0.45838503907756317,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 12243,
+      "mean_dist_px": 7.800457513795652
+    }
+  },
+  "lfifthmetatarsal": {
+    "match_type": "vertex",
+    "index": 12649,
+    "mean_dist_px": 6.330658161955469,
+    "confidence_weight": 0.5309614728579617,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 12649,
+      "mean_dist_px": 6.330658161955469
+    }
+  },
+  "LBigToe": {
+    "match_type": "vertex",
+    "index": 13051,
+    "mean_dist_px": 6.314322381909354,
+    "confidence_weight": 0.5318295486830618,
+    "num_samples": 344,
+    "vertex_alternative": {
+      "index": 13051,
+      "mean_dist_px": 6.314322381909354
+    }
+  },
+  "lcheek": {
+    "match_type": "vertex",
+    "index": 1355,
+    "mean_dist_px": 6.087240431051186,
+    "confidence_weight": 0.5440446038559534,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 1355,
+      "mean_dist_px": 6.087240431051186
+    }
+  },
+  "lbreast": {
+    "match_type": "vertex",
+    "index": 6157,
+    "mean_dist_px": 8.489140322184785,
+    "confidence_weight": 0.4278793429161972,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 6157,
+      "mean_dist_px": 8.489140322184785
+    }
+  },
+  "lelbinner": {
+    "match_type": "vertex",
+    "index": 8421,
+    "mean_dist_px": 6.4627913410883915,
+    "confidence_weight": 0.523991857392648,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 8421,
+      "mean_dist_px": 6.4627913410883915
+    }
+  },
+  "lwaist": {
+    "match_type": "vertex",
+    "index": 6649,
+    "mean_dist_px": 7.890680002867419,
+    "confidence_weight": 0.4542679756727919,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 6649,
+      "mean_dist_px": 7.890680002867419
+    }
+  },
+  "lthumb": {
+    "match_type": "vertex",
+    "index": 9123,
+    "mean_dist_px": 8.302377046923558,
+    "confidence_weight": 0.4359456476782625,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 9123,
+      "mean_dist_px": 8.302377046923558
+    }
+  },
+  "lfrontinnerthigh": {
+    "match_type": "vertex",
+    "index": 11406,
+    "mean_dist_px": 10.716049859202327,
+    "confidence_weight": 0.3424584351329749,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 11406,
+      "mean_dist_px": 10.716049859202327
+    }
+  },
+  "linnerknee": {
+    "match_type": "vertex",
+    "index": 11627,
+    "mean_dist_px": 8.307424579015002,
+    "confidence_weight": 0.43572565823844284,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 11627,
+      "mean_dist_px": 8.307424579015002
+    }
+  },
+  "lshin": {
+    "match_type": "vertex",
+    "index": 11807,
+    "mean_dist_px": 6.059627020250649,
+    "confidence_weight": 0.5455489726517387,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 11807,
+      "mean_dist_px": 6.059627020250649
+    }
+  },
+  "lfirstmetatarsal": {
+    "match_type": "vertex",
+    "index": 12658,
+    "mean_dist_px": 5.816662514388615,
+    "confidence_weight": 0.5589662119241713,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 12658,
+      "mean_dist_px": 5.816662514388615
+    }
+  },
+  "lfourthtoe": {
+    "match_type": "vertex",
+    "index": 13042,
+    "mean_dist_px": 6.534234118672713,
+    "confidence_weight": 0.5202616546883865,
+    "num_samples": 344,
+    "vertex_alternative": {
+      "index": 13042,
+      "mean_dist_px": 6.534234118672713
+    }
+  },
+  "lscapula": {
+    "match_type": "vertex",
+    "index": 6118,
+    "mean_dist_px": 8.25839194730838,
+    "confidence_weight": 0.43786738223826044,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 6118,
+      "mean_dist_px": 8.25839194730838
+    }
+  },
+  "lbum": {
+    "match_type": "vertex",
+    "index": 6323,
+    "mean_dist_px": 12.721834033888273,
+    "confidence_weight": 0.2802191219741015,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 6323,
+      "mean_dist_px": 12.721834033888273
+    }
+  },
+  "rfronthead": {
+    "match_type": "vertex",
+    "index": 4598,
+    "mean_dist_px": 8.327128311668824,
+    "confidence_weight": 0.4348679613194397,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 4598,
+      "mean_dist_px": 8.327128311668824
+    }
+  },
+  "rbackhead": {
+    "match_type": "vertex",
+    "index": 5261,
+    "mean_dist_px": 8.19166867785492,
+    "confidence_weight": 0.44079874520196605,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 5261,
+      "mean_dist_px": 8.19166867785492
+    }
+  },
+  "rback": {
+    "match_type": "vertex",
+    "index": 7293,
+    "mean_dist_px": 8.482285748339336,
+    "confidence_weight": 0.42817273651440996,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 7293,
+      "mean_dist_px": 8.482285748339336
+    }
+  },
+  "rshom": {
+    "match_type": "vertex",
+    "index": 8029,
+    "mean_dist_px": 4.812950357982258,
+    "confidence_weight": 0.6179825638247799,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 8029,
+      "mean_dist_px": 4.812950357982258
+    }
+  },
+  "rupperarm": {
+    "match_type": "vertex",
+    "index": 13281,
+    "mean_dist_px": 6.689615173508693,
+    "confidence_weight": 0.5122402542866132,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 13281,
+      "mean_dist_px": 6.689615173508693
+    }
+  },
+  "relbm": {
+    "match_type": "vertex",
+    "index": 13527,
+    "mean_dist_px": 5.08049630752737,
+    "confidence_weight": 0.6016679097898189,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 13527,
+      "mean_dist_px": 5.08049630752737
+    }
+  },
+  "rforearm": {
+    "match_type": "vertex",
+    "index": 13729,
+    "mean_dist_px": 5.38646629890247,
+    "confidence_weight": 0.583537460365056,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 13729,
+      "mean_dist_px": 5.38646629890247
+    }
+  },
+  "rwrithumbside": {
+    "match_type": "vertex",
+    "index": 14103,
+    "mean_dist_px": 6.691478693979312,
+    "confidence_weight": 0.5121448061603925,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 14103,
+      "mean_dist_px": 6.691478693979312
+    }
+  },
+  "rwripinkieside": {
+    "match_type": "vertex",
+    "index": 14092,
+    "mean_dist_px": 7.947816250950933,
+    "confidence_weight": 0.4516798597000224,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 14092,
+      "mean_dist_px": 7.947816250950933
+    }
+  },
+  "rfin": {
+    "match_type": "vertex",
+    "index": 14406,
+    "mean_dist_px": 7.351215427081004,
+    "confidence_weight": 0.4794471821244962,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 14406,
+      "mean_dist_px": 7.351215427081004
+    }
+  },
+  "rasis": {
+    "match_type": "vertex",
+    "index": 7836,
+    "mean_dist_px": 7.160040141335859,
+    "confidence_weight": 0.4887012024832318,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 7836,
+      "mean_dist_px": 7.160040141335859
+    }
+  },
+  "rpsis": {
+    "match_type": "vertex",
+    "index": 7063,
+    "mean_dist_px": 13.212676932723078,
+    "confidence_weight": 0.26679687089946824,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 7063,
+      "mean_dist_px": 13.212676932723078
+    }
+  },
+  "rfrontthigh": {
+    "match_type": "vertex",
+    "index": 16464,
+    "mean_dist_px": 11.830907900196008,
+    "confidence_weight": 0.30633047074593744,
+    "num_samples": 353,
+    "vertex_alternative": {
+      "index": 16464,
+      "mean_dist_px": 11.830907900196008
+    }
+  },
+  "rthigh": {
+    "match_type": "vertex",
+    "index": 7342,
+    "mean_dist_px": 7.969677886737982,
+    "confidence_weight": 0.4506934922146939,
+    "num_samples": 353,
+    "vertex_alternative": {
+      "index": 7342,
+      "mean_dist_px": 7.969677886737982
+    }
+  },
+  "rknem": {
+    "match_type": "vertex",
+    "index": 16743,
+    "mean_dist_px": 5.974022059478823,
+    "confidence_weight": 0.5502391891395858,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 16743,
+      "mean_dist_px": 5.974022059478823
+    }
+  },
+  "rankm": {
+    "match_type": "vertex",
+    "index": 17369,
+    "mean_dist_px": 5.617949945065852,
+    "confidence_weight": 0.5701846663860548,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 17369,
+      "mean_dist_px": 5.617949945065852
+    }
+  },
+  "RHeel": {
+    "match_type": "vertex",
+    "index": 17425,
+    "mean_dist_px": 6.734787426462839,
+    "confidence_weight": 0.5099315680064418,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 17425,
+      "mean_dist_px": 6.734787426462839
+    }
+  },
+  "rfifthmetatarsal": {
+    "match_type": "vertex",
+    "index": 17840,
+    "mean_dist_px": 6.112317962091792,
+    "confidence_weight": 0.5426819835836019,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 17840,
+      "mean_dist_px": 6.112317962091792
+    }
+  },
+  "RBigToe": {
+    "match_type": "vertex",
+    "index": 18208,
+    "mean_dist_px": 7.115417811734341,
+    "confidence_weight": 0.49088677373415146,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 18208,
+      "mean_dist_px": 7.115417811734341
+    }
+  },
+  "rcheek": {
+    "match_type": "vertex",
+    "index": 4241,
+    "mean_dist_px": 6.099841627393915,
+    "confidence_weight": 0.5433594743319569,
+    "num_samples": 353,
+    "vertex_alternative": {
+      "index": 4241,
+      "mean_dist_px": 6.099841627393915
+    }
+  },
+  "rbreast": {
+    "match_type": "vertex",
+    "index": 7378,
+    "mean_dist_px": 8.00730517544866,
+    "confidence_weight": 0.4490008412898507,
+    "num_samples": 353,
+    "vertex_alternative": {
+      "index": 7378,
+      "mean_dist_px": 8.00730517544866
+    }
+  },
+  "relbinner": {
+    "match_type": "vertex",
+    "index": 13607,
+    "mean_dist_px": 7.730078801196648,
+    "confidence_weight": 0.4616224729284455,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 13607,
+      "mean_dist_px": 7.730078801196648
+    }
+  },
+  "rwaist": {
+    "match_type": "vertex",
+    "index": 7849,
+    "mean_dist_px": 8.53389857260878,
+    "confidence_weight": 0.42596850930648655,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 7849,
+      "mean_dist_px": 8.53389857260878
+    }
+  },
+  "rthumb": {
+    "match_type": "vertex",
+    "index": 14284,
+    "mean_dist_px": 7.129725828143178,
+    "confidence_weight": 0.49018491436331113,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 14284,
+      "mean_dist_px": 7.129725828143178
+    }
+  },
+  "rfrontinnerthigh": {
+    "match_type": "vertex",
+    "index": 16588,
+    "mean_dist_px": 10.333084136797954,
+    "confidence_weight": 0.3558277855319949,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 16588,
+      "mean_dist_px": 10.333084136797954
+    }
+  },
+  "rinnerknee": {
+    "match_type": "vertex",
+    "index": 16790,
+    "mean_dist_px": 7.959418950441584,
+    "confidence_weight": 0.4511560930463278,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 16790,
+      "mean_dist_px": 7.959418950441584
+    }
+  },
+  "rshin": {
+    "match_type": "vertex",
+    "index": 16986,
+    "mean_dist_px": 5.68720132850236,
+    "confidence_weight": 0.5662496995108294,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 16986,
+      "mean_dist_px": 5.68720132850236
+    }
+  },
+  "rfirstmetatarsal": {
+    "match_type": "vertex",
+    "index": 17831,
+    "mean_dist_px": 6.039912160000884,
+    "confidence_weight": 0.5466255757325181,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 17831,
+      "mean_dist_px": 6.039912160000884
+    }
+  },
+  "rfourthtoe": {
+    "match_type": "vertex",
+    "index": 18218,
+    "mean_dist_px": 6.951394519164524,
+    "confidence_weight": 0.49900485594939614,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 18218,
+      "mean_dist_px": 6.951394519164524
+    }
+  },
+  "rscapula": {
+    "match_type": "vertex",
+    "index": 7175,
+    "mean_dist_px": 8.990647614856401,
+    "confidence_weight": 0.40695007720796383,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 7175,
+      "mean_dist_px": 8.990647614856401
+    }
+  },
+  "rbum": {
+    "match_type": "vertex",
+    "index": 7446,
+    "mean_dist_px": 12.450243463359422,
+    "confidence_weight": 0.2879338979100263,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 7446,
+      "mean_dist_px": 12.450243463359422
+    }
+  },
+  "Head": {
+    "match_type": "vertex",
+    "index": 2818,
+    "mean_dist_px": 18.295381079611236,
+    "confidence_weight": 0.16048767863934738,
+    "num_samples": 349,
+    "vertex_alternative": {
+      "index": 2818,
+      "mean_dist_px": 18.295381079611236
+    }
+  },
+  "mhip": {
+    "match_type": "vertex",
+    "index": 5736,
+    "mean_dist_px": 21.787575096651697,
+    "confidence_weight": 0.11318207094160766,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 5736,
+      "mean_dist_px": 21.787575096651697
+    }
+  },
+  "CHip": {
+    "match_type": "vertex",
+    "index": 5713,
+    "mean_dist_px": 30.892328212103518,
+    "confidence_weight": 0.04553687593274338,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 5713,
+      "mean_dist_px": 30.892328212103518
+    }
+  },
+  "Neck": {
+    "match_type": "sam3d_joint",
+    "index": 69,
+    "mean_dist_px": 6.261235909081534,
+    "confidence_weight": 0.5346603513900559,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 2848,
+      "mean_dist_px": 12.321528667492176
+    }
+  },
+  "LAnkle": {
+    "match_type": "sam3d_joint",
+    "index": 13,
+    "mean_dist_px": 11.512833898295577,
+    "confidence_weight": 0.3162306616225916,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 12196,
+      "mean_dist_px": 11.743120341338042
+    }
+  },
+  "LElbow": {
+    "match_type": "sam3d_joint",
+    "index": 65,
+    "mean_dist_px": 7.2694803294068615,
+    "confidence_weight": 0.4833820071098876,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 8381,
+      "mean_dist_px": 8.950482920097746
+    }
+  },
+  "LHip": {
+    "match_type": "vertex",
+    "index": 6677,
+    "mean_dist_px": 20.760461143918295,
+    "confidence_weight": 0.12542514978513178,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 6677,
+      "mean_dist_px": 20.760461143918295
+    }
+  },
+  "LHand": {
+    "match_type": "vertex",
+    "index": 9338,
+    "mean_dist_px": 10.269915450244897,
+    "confidence_weight": 0.358082617156874,
+    "num_samples": 346,
+    "vertex_alternative": {
+      "index": 9338,
+      "mean_dist_px": 10.269915450244897
+    }
+  },
+  "LKnee": {
+    "match_type": "sam3d_joint",
+    "index": 11,
+    "mean_dist_px": 7.868283414428429,
+    "confidence_weight": 0.4552865211334239,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 11591,
+      "mean_dist_px": 15.422767270844197
+    }
+  },
+  "LShoulder": {
+    "match_type": "vertex",
+    "index": 6865,
+    "mean_dist_px": 9.660780513199988,
+    "confidence_weight": 0.3805727016067443,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 6865,
+      "mean_dist_px": 9.660780513199988
+    }
+  },
+  "LWrist": {
+    "match_type": "sam3d_joint",
+    "index": 62,
+    "mean_dist_px": 7.57514135062542,
+    "confidence_weight": 0.46883042875939285,
+    "num_samples": 348,
+    "vertex_alternative": {
+      "index": 8930,
+      "mean_dist_px": 9.7080166756299
+    }
+  },
+  "LFoot": {
+    "match_type": "vertex",
+    "index": 13047,
+    "mean_dist_px": 6.120400713117111,
+    "confidence_weight": 0.5422435244693421,
+    "num_samples": 344,
+    "vertex_alternative": {
+      "index": 13047,
+      "mean_dist_px": 6.120400713117111
+    }
+  },
+  "RAnkle": {
+    "match_type": "vertex",
+    "index": 17348,
+    "mean_dist_px": 10.838773784190566,
+    "confidence_weight": 0.33828133473679683,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 17348,
+      "mean_dist_px": 10.838773784190566
+    }
+  },
+  "RElbow": {
+    "match_type": "sam3d_joint",
+    "index": 8,
+    "mean_dist_px": 8.21078550757593,
+    "confidence_weight": 0.4399568826901388,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 13553,
+      "mean_dist_px": 10.225688180022193
+    }
+  },
+  "RHip": {
+    "match_type": "vertex",
+    "index": 7828,
+    "mean_dist_px": 20.714431876606348,
+    "confidence_weight": 0.1260038032880227,
+    "num_samples": 350,
+    "vertex_alternative": {
+      "index": 7828,
+      "mean_dist_px": 20.714431876606348
+    }
+  },
+  "RHand": {
+    "match_type": "vertex",
+    "index": 14570,
+    "mean_dist_px": 9.113182867756162,
+    "confidence_weight": 0.40199393128798294,
+    "num_samples": 352,
+    "vertex_alternative": {
+      "index": 14570,
+      "mean_dist_px": 9.113182867756162
+    }
+  },
+  "RKnee": {
+    "match_type": "sam3d_joint",
+    "index": 12,
+    "mean_dist_px": 6.92788697424435,
+    "confidence_weight": 0.5001792736991342,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 16733,
+      "mean_dist_px": 14.2251396355543
+    }
+  },
+  "RShoulder": {
+    "match_type": "vertex",
+    "index": 8012,
+    "mean_dist_px": 9.275923910322591,
+    "confidence_weight": 0.3955047858724842,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 8012,
+      "mean_dist_px": 9.275923910322591
+    }
+  },
+  "RWrist": {
+    "match_type": "sam3d_joint",
+    "index": 41,
+    "mean_dist_px": 6.831050958530095,
+    "confidence_weight": 0.5050463378219571,
+    "num_samples": 351,
+    "vertex_alternative": {
+      "index": 14095,
+      "mean_dist_px": 9.976902006995703
+    }
+  },
+  "RFoot": {
+    "match_type": "vertex",
+    "index": 18212,
+    "mean_dist_px": 6.9794431614397245,
+    "confidence_weight": 0.49760717614695077,
+    "num_samples": 347,
+    "vertex_alternative": {
+      "index": 18212,
+      "mean_dist_px": 6.9794431614397245
+    }
+  }
+}

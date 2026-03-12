@@ -1027,7 +1027,9 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"},
         {"top_down_method": 30, "top_down_method_name": "Sapiens_0.3b_Goliath"},
         {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
-        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"}
+        {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
+        {"top_down_method": 34, "top_down_method_name": "Sam3dBody_with_hands2"},
+        {"top_down_method": 35, "top_down_method_name": "Sam3dBody_movi87"},
     ]
 
 
@@ -1286,6 +1288,25 @@ class TopDownPerson(dj.Computed):
             variant = method_name.split("_")[1]
             key["keypoints"] = sapiens_top_down_person(key, variant=variant)
 
+        elif method_name == "Sam3dBody_with_hands2":
+            keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
+            keypoints2d_with_conf = np.concatenate(
+                [keypoints2d, np.ones((keypoints2d.shape[0], keypoints2d.shape[1], 1))], axis=-1
+            )
+            key["keypoints"] = keypoints2d_with_conf
+        
+        elif method_name == "Sam3dBody_movi87":
+            from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
+
+            mhr_dict = load_kp_vertex_mapping()
+            mesh_3d, keypoints_2d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            keypoints_2d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_2d, camera_t, focal_length, (height,width))
+            keypoints_2d_movi_with_conf = np.concatenate(
+                [keypoints_2d_movi, np.ones((keypoints_2d_movi.shape[0], keypoints_2d_movi.shape[1], 1))], axis=-1
+            )
+            key["keypoints"] = keypoints_2d_movi_with_conf
+
         else:
             raise Exception("Method not implemented")
 
@@ -1318,7 +1339,7 @@ class TopDownPerson(dj.Computed):
             LiftingPerson.insert1(entry,allow_direct_insert=True)
 
     @staticmethod
-    def joint_names(method="MMPose"):
+    def joint_names(method="MMPose", normalize=True):
         if method == "OpenPose":
             return OpenPosePerson.joint_names()
         elif method == "Bridging_COCO_25":
@@ -1333,7 +1354,17 @@ class TopDownPerson(dj.Computed):
         elif "Sapiens" in method:
             from .wrappers.sapiens import get_joint_names
 
-            return get_joint_names()
+            return get_joint_names(normalize=normalize)
+
+        elif method == "Sam3dBody_with_hands2":
+            from .wrappers.sam3d_body import get_joint_names
+
+            return get_joint_names(normalize=normalize)
+
+        elif method == "Sam3dBody_movi87":
+            from .wrappers.sam3d_body import sam_vertex_movi_names
+
+            return sam_vertex_movi_names
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
@@ -1472,7 +1503,9 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 18, "lifting_method_name": "Bridging_ExtDetector_COCO_25"},
         {"lifting_method": 19, "lifting_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"lifting_method": 20, "lifting_method_name": "Bridging_ExtDetector_smpl+head_30"},
-        {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"}
+        {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
+        {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
+        {"lifting_method": 35, "lifting_method_name": "Sam3dBody_movi87"},
     ]
 
 
@@ -1654,7 +1687,27 @@ class LiftingPerson(dj.Computed):
             # not capture this
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
-            
+
+
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
+            keypoints3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
+            keypoints3d_with_conf = np.concatenate(
+                [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
+            )
+            results = {"keypoints_3d": keypoints3d_with_conf[:, :, :], "keypoints_valid": keypoints3d_with_conf[:, :, -1] > 0.5}
+        
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
+            from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
+
+            mhr_dict = load_kp_vertex_mapping()
+            mesh_3d, keypoints_3d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            keypoints_3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_3d, camera_t, focal_length, (height,width))
+            keypoints_3d_movi_with_conf = np.concatenate(
+                [keypoints_3d_movi, np.ones((keypoints_3d_movi.shape[0], keypoints_3d_movi.shape[1], 1))], axis=-1
+            )
+            results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
+
         else:
             raise Exception(f"Method not implemented {key}")
 
@@ -2480,3 +2533,97 @@ class HandPoseEstimation(dj.Computed):
             raise Exception(f"Method not implemented")
 
         self.insert1(key)
+
+
+# =============================================================================
+# SAM-3D-Body Tables (MHR format)
+# =============================================================================
+
+@schema
+class SAM3DBodyMethodLookup(dj.Lookup):
+    definition = """
+    sam3d_method       : int
+    ---
+    sam3d_method_name  : varchar(50)
+    """
+    contents = [
+        {"sam3d_method": 0, "sam3d_method_name": "jax"},
+        {"sam3d_method": 1, "sam3d_method_name": "torch_dinov3"},
+        {"sam3d_method": 2, "sam3d_method_name": "jax_hands"},
+        {"sam3d_method": 3, "sam3d_method_name": "jax_hands2"},
+    ]
+
+
+@schema
+class SAM3DBodyMethod(dj.Manual):
+    definition = """
+    -> PersonBbox
+    -> SAM3DBodyMethodLookup
+    """
+
+
+@schema
+class SAM3DBody(dj.Computed):
+    definition = """
+    -> SAM3DBodyMethod
+    ---
+    vertices           : longblob   # [N_frames, N_vertices, 3] MHR mesh vertices
+    keypoints_3d       : longblob   # [N_frames, 70, 3] 3D joint positions
+    keypoints_2d       : longblob   # [N_frames, 70, 2] 2D projected keypoints
+    camera_t           : longblob   # [N_frames, 3] camera translations
+    focal_length       : longblob   # [N_frames] focal lengths
+    body_pose_params   : longblob   # MHR body pose parameters
+    hand_pose_params   : longblob   # MHR hand pose parameters
+    shape_params       : longblob   # MHR shape parameters
+    global_rot         : longblob   # Global rotation parameters
+    mesh_faces         : longblob   # Mesh face indices (shared across frames)
+    frame_valid        : longblob   # [N_frames] boolean mask of valid frames
+    """
+
+    def make_fetch(self, key):
+        """
+        Fetch phase: retrieve all required data from parent tables.
+        """
+        method_name = (SAM3DBodyMethodLookup & key).fetch1("sam3d_method_name")
+        return (method_name,)
+
+    def make_compute(self, key, method_name):
+        """
+        Compute phase: run SAM-3D-Body inference.
+        """
+        from .wrappers.sam3d_body import process_sam3d_body
+        res = process_sam3d_body(key, method_name=method_name)
+        return (res,)
+
+    def make_insert(self, key, res):
+        """
+        Insert phase: store results in the table.
+        Runs inside a fresh transaction after data validation.
+        """
+        self.insert1(res)
+
+
+@schema
+class SAM3DBodyVideo(dj.Computed):
+    definition = """
+    -> SAM3DBody
+    -> BlurredVideo
+    ---
+    output_video      : attach@localattach    # datajoint managed video file
+    """
+
+    def make(self, key):
+        from pose_pipeline.utils.visualization import video_overlay
+        from .wrappers.sam3d_body import get_sam3d_callback
+
+        video = (BlurredVideo & key).fetch1("output_video")
+        callback = get_sam3d_callback(key)
+
+        fd, out_file_name = tempfile.mkstemp(suffix=".mp4")
+        os.close(fd)
+        video_overlay(video, out_file_name, callback, downsample=1)
+        key["output_video"] = out_file_name
+
+        self.insert1(key)
+
+        os.remove(video)
