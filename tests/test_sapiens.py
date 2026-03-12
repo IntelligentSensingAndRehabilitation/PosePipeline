@@ -62,3 +62,21 @@ def test_sapiens_pose_inference():
 
     assert keypoints.shape[-1] == 2, f"Expected (x, y) coords, got shape {keypoints.shape}"
     assert scores.shape[-1] == 308, f"Expected 308 keypoint scores, got {scores.shape}"
+
+
+def test_estimator_cache():
+    """Verify _get_estimator returns the same instance on repeated calls."""
+    from pose_pipeline.wrappers.sapiens import _get_estimator, _estimator_cache
+
+    _estimator_cache.clear()
+
+    est1 = _get_estimator("0.3b", ["pose"])
+    est2 = _get_estimator("0.3b", ["pose"])
+    assert est1 is est2, "Cache should return the same estimator instance"
+
+    # Switching variant should evict the old entry
+    est3 = _get_estimator("0.6b", ["pose"])
+    assert est3 is not est1, "Different variant should create a new estimator"
+    assert len(_estimator_cache) == 1, "Cache should only hold one entry at a time"
+
+    _estimator_cache.clear()
