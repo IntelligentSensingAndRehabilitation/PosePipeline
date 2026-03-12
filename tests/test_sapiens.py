@@ -46,7 +46,6 @@ def test_sapiens_pose_model_load():
 
 def test_sapiens_pose_inference():
     """Run pose inference on a dummy image through the SapiensEstimator wrapper."""
-    import jax.numpy as jnp
     from pose_pipeline.wrappers.sapiens import SapiensEstimator
 
     estimator = SapiensEstimator(variant="0.3b", tasks=["pose"], img_size=(1024, 768))

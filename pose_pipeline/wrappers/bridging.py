@@ -1,12 +1,10 @@
+import gc
 import os
+
 import cv2
 import numpy as np
+
 from pose_pipeline import Video
-
-from pose_pipeline import MODEL_DATA_DIR
-
-import tensorflow as tf
-import tensorflow_hub as hub
 
 # supported formats are
 # 'smpl_24', 'h36m_17', 'h36m_25', 'mpi_inf_3dhp_17', 'mpi_inf_3dhp_28', 'coco_19', 'sailvos_26', 'gpa_34', 'aspset_17',
@@ -29,39 +27,35 @@ def make_coco_25(model):
     updated = np.concatenate([model.per_skeleton_indices["coco_19"], new])
     model.per_skeleton_indices["coco_25"] = updated
 
-    model.per_skeleton_joint_names["coco_25"] = [f(x) for x in model.per_skeleton_joint_names[""][updated]]
-    model.per_skeleton_joint_edges["coco_25"] = model.per_skeleton_joint_edges["coco_19"]
+    model.per_skeleton_joint_names["coco_25"] = [
+        f(x) for x in model.per_skeleton_joint_names[""][updated]
+    ]
+    model.per_skeleton_joint_edges["coco_25"] = model.per_skeleton_joint_edges[
+        "coco_19"
+    ]
 
     return model
 
 
 def get_model():
-    # doing this here to only load model once, since this takes quite a while 
     if get_model.model is None:
-        # model_path = os.path.join(MODEL_DATA_DIR, "bridging_formats")
-        # model = hub.load(model_path)
+        import tensorflow_hub as hub
+
+        from pose_pipeline import tensorflow_memory_limit
+
+        tensorflow_memory_limit()
+
         print("Loading MeTRAbs Model...")
         model_cache = os.environ.get("TFHUB_CACHE_DIR")
         print(f"Model cached in: {model_cache}")
-        # Try bit.ly link first
-        METRABS_URL_SHORT = "https://bit.ly/metrabs_l"
-        METRABS_URL_FALLBACK = "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_y4_384px_800k_28ds.tar.gz"
-
-        model = None
-        for url in [METRABS_URL_SHORT, METRABS_URL_FALLBACK]:
-            try:
-                print(f"Attempting to load model from: {url}")
-                model = hub.load(url)
-                print(f"Successfully loaded model from: {url}")
-                break
-            except (Exception) as e:
-                print(f"Failed to load from {url}: {e}")
-                if url == METRABS_URL_FALLBACK:
-                    raise Exception("Failed to load MeTRAbs model from both URLs")
-                continue
-
-        model.per_skeleton_joint_names = {k: v.numpy() for k, v in model.per_skeleton_joint_names.items()}
-        model.per_skeleton_indices = {k: v.numpy() for k, v in model.per_skeleton_indices.items()}
+        model = hub.load("https://bit.ly/metrabs_l")
+        print("MeTRAbs Model Loaded")
+        model.per_skeleton_joint_names = {
+            k: v.numpy() for k, v in model.per_skeleton_joint_names.items()
+        }
+        model.per_skeleton_indices = {
+            k: v.numpy() for k, v in model.per_skeleton_indices.items()
+        }
 
         model = make_coco_25(model)
 
@@ -98,20 +92,21 @@ def filter_skeleton(keypoints, skeleton, model=None):
     keypoints = np.array([k[..., idx, :] for k in keypoints])
     return keypoints
 
-def scale_align(poses):
-    square_scales = tf.reduce_mean(tf.square(poses), axis=(-2, -1), keepdims=True)
-    mean_square_scale = tf.reduce_mean(square_scales, axis=-3, keepdims=True)
-    return poses * tf.sqrt(mean_square_scale / square_scales)
+
+def scale_align(poses: np.ndarray) -> np.ndarray:
+    square_scales = np.mean(np.square(poses), axis=(-2, -1), keepdims=True)
+    mean_square_scale = np.mean(square_scales, axis=-3, keepdims=True)
+    return poses * np.sqrt(mean_square_scale / square_scales)
 
 
-def point_stdev(poses, item_axis, coord_axis):
-    coordwise_variance = tf.math.reduce_variance(poses, axis=item_axis, keepdims=True)
-    average_stdev = tf.sqrt(tf.reduce_sum(coordwise_variance, axis=coord_axis, keepdims=True))
-    return tf.squeeze(average_stdev, (item_axis, coord_axis))
+def point_stdev(poses: np.ndarray, item_axis: int, coord_axis: int) -> np.ndarray:
+    coordwise_variance = np.var(poses, axis=item_axis, keepdims=True)
+    average_stdev = np.sqrt(np.sum(coordwise_variance, axis=coord_axis, keepdims=True))
+    return np.squeeze(average_stdev, (item_axis, coord_axis))
 
 
-def augmentation_noise(poses3d):
-    return point_stdev(scale_align(poses3d), item_axis=1, coord_axis=-1).numpy()
+def augmentation_noise(poses3d: np.ndarray) -> np.ndarray:
+    return point_stdev(scale_align(poses3d), item_axis=1, coord_axis=-1)
 
 
 def noise_to_conf(x, half_val=200, sharpness=50):
@@ -135,96 +130,107 @@ def bridging_formats_bottom_up(key, model=None, skeleton=""):
     keypoints2d = []
     keypoints3d = []
     keypoint_noises = []
-    for _ in tqdm(range(video_length)):
-
-        # should match the length of identified person tracks
+    for frame_idx in tqdm(range(video_length)):
         ret, frame = cap.read()
         assert ret and frame is not None
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        pred = model.detect_poses(frame, skeleton=skeleton, num_aug=10, average_aug=False,
-                                  detector_flip_aug=True, detector_threshold=0.1)
+        pred = model.detect_poses(
+            frame,
+            skeleton=skeleton,
+            num_aug=10,
+            average_aug=False,
+            detector_flip_aug=True,
+            detector_threshold=0.1,
+        )
 
+        poses3d_np = pred["poses3d"].numpy()
         boxes.append(pred["boxes"].numpy())
         keypoints2d.append(np.mean(pred["poses2d"].numpy(), axis=1))
-        keypoints3d.append(np.mean(pred["poses3d"].numpy(), axis=1))
-        keypoint_noises.append(augmentation_noise(pred["poses3d"].numpy()))
+        keypoints3d.append(np.mean(poses3d_np, axis=1))
+        keypoint_noises.append(augmentation_noise(poses3d_np))
+
+        del pred, frame, poses3d_np
+        if frame_idx % 100 == 0:
+            gc.collect()
 
     cap.release()
     os.remove(video)
 
-    return {"boxes": boxes, "keypoints2d": keypoints2d, "keypoints3d": keypoints3d, "keypoint_noise": keypoint_noises}
+    return {
+        "boxes": boxes,
+        "keypoints2d": keypoints2d,
+        "keypoints3d": keypoints3d,
+        "keypoint_noise": keypoint_noises,
+    }
 
 
 # Bridging with focused keypoint detection using external bounding boxes
-def bridging_formats_with_external_bbox(key, external_bboxes, bbox_present, model=None, skeleton=""):
-    """
-    Run MeTRAbs pose estimation using externally provided bounding boxes for each frame.
-    Args:
-        key: DataJoint key for the video.
-        external_bboxes: np.ndarray, shape (num_frames, 4), each bbox as [x, y, w, h]
-        bbox_present: np.ndarray, shape (num_frames,), boolean array indicating if bbox is present for each frame
-        model: Optionally provide a loaded MeTRAbs model.
-        skeleton: Skeleton type for the model.
-    Returns:
-        dict with keys: boxes, keypoints2d, keypoints3d, keypoint_noise
-    """
+def bridging_formats_with_external_bbox(
+    key: dict,
+    external_bboxes: np.ndarray,
+    bbox_present: np.ndarray,
+    model: object | None = None,
+    skeleton: str = "",
+) -> dict[str, np.ndarray | list]:
+    import tensorflow as tf
+    from tqdm import tqdm
 
-    # Get MeTRAbs model if not provided
     if model is None:
         model = get_model()
-
-    from tqdm import tqdm
 
     video = Video.get_robust_reader(key, return_cap=False)
     cap = cv2.VideoCapture(video)
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    n_joints = model.per_skeleton_indices[skeleton].shape[0]
     boxes = []
     keypoints2d = []
     keypoints3d = []
     keypoint_noises = []
 
-    # Iterate through each frame
     for frame_idx in tqdm(range(video_length)):
-
-        # Should match the length of identified person tracks
         ret, frame = cap.read()
         assert ret and frame is not None
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # If no bounding box is present, append empty arrays (make sure they match the expected shape)
-        if not bbox_present[frame_idx]:     
+        if not bbox_present[frame_idx]:
             boxes.append(np.zeros((0, 4)))
-            keypoints2d.append(np.zeros((1, model.per_skeleton_indices[skeleton].shape[0], 2)))
-            keypoints3d.append(np.zeros((1, model.per_skeleton_indices[skeleton].shape[0], 3)))
-            keypoint_noises.append(np.zeros((1, model.per_skeleton_indices[skeleton].shape[0])))
+            keypoints2d.append(np.zeros((1, n_joints, 2)))
+            keypoints3d.append(np.zeros((1, n_joints, 3)))
+            keypoint_noises.append(np.zeros((1, n_joints)))
             continue
-        
-        # Convert bbox to Tensor format
+
         bbox = tf.convert_to_tensor([external_bboxes[frame_idx]], dtype=tf.float32)
+        pred = model.estimate_poses(
+            frame, bbox, skeleton=skeleton, num_aug=10, average_aug=False
+        )
 
-        # Run MeTRAbs estimate_poses with the external bounding box
-        # pred is a dictionary with keys: "poses2d", "poses3d", "bbox", "bbox_used"
-        pred = model.estimate_poses(frame, bbox, skeleton=skeleton, num_aug=10, average_aug=False)
-
-        # Append results
+        poses3d_np = pred["poses3d"].numpy()
         boxes.append(bbox)
         keypoints2d.append(np.mean(pred["poses2d"].numpy(), axis=1))
-        keypoints3d.append(np.mean(pred["poses3d"].numpy(), axis=1))
-        keypoint_noises.append(augmentation_noise(pred["poses3d"].numpy()))
+        keypoints3d.append(np.mean(poses3d_np, axis=1))
+        keypoint_noises.append(augmentation_noise(poses3d_np))
 
-    # Convert to arrays and reshape
-    keypoints2d = np.squeeze(np.array(keypoints2d), axis=1)             # shape: (N, J, 2)
-    keypoints3d = np.squeeze(np.array(keypoints3d), axis=1)             # shape: (N, J, 3)
-    keypoint_noises = np.squeeze(np.array(keypoint_noises), axis=1)     # shape: (N, J)
-    
+        del pred, frame, poses3d_np
+        if frame_idx % 100 == 0:
+            gc.collect()
+
+    keypoints2d = np.squeeze(np.array(keypoints2d), axis=1)
+    keypoints3d = np.squeeze(np.array(keypoints3d), axis=1)
+    keypoint_noises = np.squeeze(np.array(keypoint_noises), axis=1)
+
     cap.release()
     os.remove(video)
 
-    return {"boxes": boxes, "keypoints2d": keypoints2d, "keypoints3d": keypoints3d, "keypoint_noise": keypoint_noises}
+    return {
+        "boxes": boxes,
+        "keypoints2d": keypoints2d,
+        "keypoints3d": keypoints3d,
+        "keypoint_noise": keypoint_noises,
+    }
 
 
 def get_overlay_callback(boxes, poses2d, joint_edges=None):
@@ -235,7 +241,6 @@ def get_overlay_callback(boxes, poses2d, joint_edges=None):
         small = int(5e-3 * np.max(image.shape))
 
         for bbox, p2d in zip(bbox, p2d):
-
             cv2.rectangle(
                 image,
                 (int(bbox[0]), int(bbox[1])),
@@ -264,7 +269,7 @@ def get_overlay_callback(boxes, poses2d, joint_edges=None):
 
 normalized_joint_name_dictionary = {
     "coco_25": [
-        "Sternum", # "Neck",
+        "Sternum",  # "Neck",
         "Nose",
         "Pelvis",
         "Left Shoulder",
