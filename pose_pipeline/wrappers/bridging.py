@@ -45,10 +45,22 @@ def get_model():
 
         tensorflow_memory_limit()
 
+        METRABS_URLS = [
+            "https://bit.ly/metrabs_l",
+            "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_y4_384px_800k_28ds.tar.gz",
+        ]
+
         print("Loading MeTRAbs Model...")
         model_cache = os.environ.get("TFHUB_CACHE_DIR")
         print(f"Model cached in: {model_cache}")
-        model = hub.load("https://bit.ly/metrabs_l")
+        for url in METRABS_URLS:
+            try:
+                model = hub.load(url)
+                break
+            except Exception as e:
+                print(f"Failed to load from {url}: {e}")
+        else:
+            raise RuntimeError("Failed to load MeTRAbs model from all URLs")
         print("MeTRAbs Model Loaded")
         model.per_skeleton_joint_names = {
             k: v.numpy() for k, v in model.per_skeleton_joint_names.items()
