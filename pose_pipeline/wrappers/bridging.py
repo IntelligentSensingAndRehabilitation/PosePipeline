@@ -186,6 +186,18 @@ def bridging_formats_with_external_bbox(
     model: object | None = None,
     skeleton: str = "",
 ) -> dict[str, np.ndarray | list]:
+    """Run MeTRAbs pose estimation using externally provided bounding boxes for each frame.
+
+    Args:
+        key: DataJoint key for the video.
+        external_bboxes: np.ndarray, shape (num_frames, 4), each bbox as [x, y, w, h]
+        bbox_present: np.ndarray, shape (num_frames,), boolean array indicating if bbox is present for each frame
+        model: Optionally provide a loaded MeTRAbs model.
+        skeleton: Skeleton type for the model.
+
+    Returns:
+        dict with keys: boxes, keypoints2d, keypoints3d, keypoint_noise
+    """
     import tensorflow as tf
     from tqdm import tqdm
 
