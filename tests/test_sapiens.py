@@ -39,7 +39,7 @@ def test_sapiens_pose_model_load():
     # Try pretrained (requires HF_TOKEN for private repo), fall back to PyTorch conversion
     try:
         model = SapiensPose.from_pretrained(variant="0.3b")
-    except Exception:
+    except (OSError, EnvironmentError):
         model = SapiensPose.from_pytorch(variant="0.3b")
     assert model is not None, "SapiensPose model failed to load"
 

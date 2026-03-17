@@ -233,7 +233,7 @@ def bridging_formats_with_external_bbox(
         )
 
         poses3d_np = pred["poses3d"].numpy()
-        boxes.append(bbox)
+        boxes.append(bbox.numpy())
         keypoints2d.append(np.mean(pred["poses2d"].numpy(), axis=1))
         keypoints3d.append(np.mean(poses3d_np, axis=1))
         keypoint_noises.append(augmentation_noise(poses3d_np))
