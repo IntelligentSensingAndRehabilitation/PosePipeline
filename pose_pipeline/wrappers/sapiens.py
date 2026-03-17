@@ -320,14 +320,31 @@ class SapiensEstimator:
         return final_results
 
 
+_estimator_cache: Dict[str, SapiensEstimator] = {}
+
+
+def _get_estimator(variant: str, tasks: List[str]) -> SapiensEstimator:
+    """Return a cached SapiensEstimator, creating one if needed."""
+    cache_key = f"{variant}_{'_'.join(sorted(tasks))}"
+    if cache_key not in _estimator_cache:
+        _estimator_cache.clear()  # only keep one variant loaded at a time
+        _estimator_cache[cache_key] = SapiensEstimator(variant=variant, tasks=tasks)
+    return _estimator_cache[cache_key]
+
+
 def sapiens_top_down_person(key: Dict[str, Any], variant: str = "1b", tasks=["pose"]) -> np.ndarray:
     """Entry point for DataJoint TopDownPerson table."""
     from pose_pipeline.pipeline import Video, PersonBbox
 
     video_path, bboxes, present = (Video * PersonBbox & key).fetch1("video", "bbox", "present")
 
-    estimator = SapiensEstimator(variant=variant, tasks=tasks)
-    results = estimator.predict_video(video_path, bboxes, present)
+    # Auto-select batch size based on model variant to avoid GPU OOM.
+    # Larger variants need smaller batches (1b ~4.7GB constants + weights).
+    variant_batch_sizes = {"0.3b": 8, "0.6b": 4, "1b": 2, "2b": 1}
+    batch_size = variant_batch_sizes.get(variant, 2)
+
+    estimator = _get_estimator(variant, tasks)
+    results = estimator.predict_video(video_path, bboxes, present, batch_size=batch_size)
 
     if "tmp" in str(video_path) and os.path.exists(video_path):
         try:

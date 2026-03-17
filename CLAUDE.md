@@ -18,6 +18,7 @@ bash scripts/mmlab_install_mim.sh  # required for OpenMMlab algorithms
 pytest tests/
 pytest tests/test_models.py         # model loading (MeTRAbs, MMPose)
 pytest tests/test_mmlab_packages.py # MMlab package availability
+pytest tests/test_sapiens.py       # Sapiens (JAX/Equinox) integration
 
 # Formatting
 black --line-length=120 --extend-exclude='3rdparty/*' .

@@ -42,6 +42,11 @@ name = "lap"
 version = "0.4.0"
 requires-dist = ["numpy>=1.10.1"]
 
+[tool.pytest.ini_options]
+markers = [
+    "gpu: requires GPU access",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
