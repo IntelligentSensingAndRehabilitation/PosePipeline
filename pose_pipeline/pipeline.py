@@ -1290,9 +1290,12 @@ class TopDownPerson(dj.Computed):
 
         elif method_name == "Sam3dBody_with_hands2":
             keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
-            keypoints2d_with_conf = np.concatenate(
-                [keypoints2d, np.ones((keypoints2d.shape[0], keypoints2d.shape[1], 1))], axis=-1
-            )
+
+            # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints2d).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+
+            keypoints2d_with_conf = np.concatenate([keypoints2d, conf], axis=-1)
             key["keypoints"] = keypoints2d_with_conf
         
         elif method_name == "Sam3dBody_movi87":
@@ -1302,9 +1305,12 @@ class TopDownPerson(dj.Computed):
             mesh_3d, keypoints_2d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
             keypoints_2d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_2d, camera_t, focal_length, (height,width))
-            keypoints_2d_movi_with_conf = np.concatenate(
-                [keypoints_2d_movi, np.ones((keypoints_2d_movi.shape[0], keypoints_2d_movi.shape[1], 1))], axis=-1
-            )
+
+            # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_2d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+
+            keypoints_2d_movi_with_conf = np.concatenate([keypoints_2d_movi, conf], axis=-1)
             key["keypoints"] = keypoints_2d_movi_with_conf
 
         else:
@@ -1690,11 +1696,15 @@ class LiftingPerson(dj.Computed):
 
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
-            keypoints3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
-            keypoints3d_with_conf = np.concatenate(
-                [keypoints3d, np.ones((keypoints3d.shape[0], keypoints3d.shape[1], 1))], axis=-1
-            )
-            results = {"keypoints_3d": keypoints3d_with_conf[:, :, :], "keypoints_valid": keypoints3d_with_conf[:, :, -1] > 0.5}
+            keypoints_3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
+            keypoints_3d = keypoints_3d * 1000  # convert to mm for consistency with other methods
+
+            # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_3d).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+
+            keypoints_3d_with_conf = np.concatenate([keypoints_3d, conf], axis=-1)
+            results = {"keypoints_3d": keypoints_3d_with_conf[:, :, :], "keypoints_valid": keypoints_3d_with_conf[:, :, -1] > 0.5}
         
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
             from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
@@ -1703,9 +1713,13 @@ class LiftingPerson(dj.Computed):
             mesh_3d, keypoints_3d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
             keypoints_3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_3d, camera_t, focal_length, (height,width))
-            keypoints_3d_movi_with_conf = np.concatenate(
-                [keypoints_3d_movi, np.ones((keypoints_3d_movi.shape[0], keypoints_3d_movi.shape[1], 1))], axis=-1
-            )
+            keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
+
+           # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_3d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+            
+            keypoints_3d_movi_with_conf = np.concatenate([keypoints_3d_movi, conf], axis=-1)
             results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
 
         else:
