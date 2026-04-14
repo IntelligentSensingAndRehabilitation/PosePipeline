@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import os
 from pathlib import Path
+import cv2
 
 
 def compress(fn, bitrate=5):
@@ -82,3 +83,27 @@ def make_browser_friendly(
 
     print(f"Transcoded video written to: {output_path}")
     return str(output_path), str(backup_path)
+
+def verify_frame_count(cap, reported_frames):
+    # Fast path: try seeking to the last frame
+    cap.set(cv2.CAP_PROP_POS_FRAMES, reported_frames - 1)
+    is_readable, _ = cap.read()
+    if is_readable:
+        return reported_frames  # metadata is correct
+
+    # Slow path: binary search between 0 and reported_frames
+    # last_good  = highest frame index confirmed is readable
+    # first_bad  = lowest frame index confirmed fails
+    last_good, first_bad = 0, reported_frames - 1
+
+    while last_good < first_bad:
+        test_frame = (last_good + first_bad + 1) // 2
+        cap.set(cv2.CAP_PROP_POS_FRAMES, test_frame)
+        is_readable, _ = cap.read()
+        if is_readable:
+            last_good = test_frame
+        else:
+            first_bad = test_frame - 1
+
+    # last_good is a 0-indexed frame number, so actual count is last_good + 1
+    return last_good + 1
