@@ -1,5 +1,6 @@
 from pose_pipeline import *
 from pose_pipeline.utils.tracking import annotate_single_person
+from pose_pipeline.utils.person_selection import auto_annotate
 from typing import List, Dict, Union
 
 
@@ -32,15 +33,16 @@ def tracking_pipeline(
 
         # set up and compute tracking method
         tracking_key = key.copy()
-        tracking_method = (TrackingBboxMethodLookup & f'tracking_method_name="{tracking_method_name}"').fetch1(
-            "tracking_method"
-        )
+        tracking_method = (
+            TrackingBboxMethodLookup & f'tracking_method_name="{tracking_method_name}"'
+        ).fetch1("tracking_method")
         tracking_key["tracking_method"] = tracking_method
         TrackingBboxMethod.insert1(tracking_key, skip_duplicates=True)
         TrackingBbox.populate(tracking_key, reserve_jobs=reserve_jobs)
 
-        # see if it can be automatically annotated
+        # see if it can be automatically annotated (single-person, then multi-person heuristic)
         annotate_single_person(key)
+        auto_annotate(tracking_key, tracking_method_name=tracking_method_name)
 
         # compute the person bbox (requires a method to have inserted the valid bbox)
         PersonBbox.populate(tracking_key, reserve_jobs=True)
@@ -69,7 +71,9 @@ def top_down_pipeline(
         reserve_jobs (bool)          : whether to reserve jobs or not
     """
 
-    tracking_keys = tracking_pipeline(key, tracking_method_name, reserve_jobs=reserve_jobs)
+    tracking_keys = tracking_pipeline(
+        key, tracking_method_name, reserve_jobs=reserve_jobs
+    )
     top_down_person_keys = []
 
     for tracking_key in tracking_keys:
@@ -88,9 +92,9 @@ def top_down_pipeline(
 
         # compute top down person
         top_down_key = (PersonBbox & tracking_key).fetch1("KEY")
-        top_down_method = (TopDownMethodLookup & f'top_down_method_name="{top_down_method_name}"').fetch1(
-            "top_down_method"
-        )
+        top_down_method = (
+            TopDownMethodLookup & f'top_down_method_name="{top_down_method_name}"'
+        ).fetch1("top_down_method")
         top_down_key["top_down_method"] = top_down_method
         TopDownMethod.insert1(top_down_key, skip_duplicates=True)
         if top_down_method_name == "OpenPose":
@@ -127,18 +131,22 @@ def lifting_pipeline(
         bool: whether the pipeline was successful or not
     """
 
-    res = top_down_pipeline(key, tracking_method_name, top_down_method_name, reserve_jobs=reserve_jobs)
+    res = top_down_pipeline(
+        key, tracking_method_name, top_down_method_name, reserve_jobs=reserve_jobs
+    )
     if not res:
         return res
 
     tracking_key = key.copy()
-    tracking_method = (TrackingBboxMethodLookup & f'tracking_method_name="{tracking_method_name}"').fetch1(
-        "tracking_method"
-    )
+    tracking_method = (
+        TrackingBboxMethodLookup & f'tracking_method_name="{tracking_method_name}"'
+    ).fetch1("tracking_method")
     tracking_key["tracking_method"] = tracking_method
 
     top_down_key = (PersonBbox & tracking_key).fetch1("KEY")
-    top_down_method = (TopDownMethodLookup & f'top_down_method_name="{top_down_method_name}"').fetch1("top_down_method")
+    top_down_method = (
+        TopDownMethodLookup & f'top_down_method_name="{top_down_method_name}"'
+    ).fetch1("top_down_method")
     top_down_key["top_down_method"] = top_down_method
 
     if len(TopDownPerson & top_down_key) == 0:
@@ -147,7 +155,9 @@ def lifting_pipeline(
 
     # compute lifting
     lifting_key = top_down_key.copy()
-    lifting_method = (LiftingMethodLookup & f'lifting_method_name="{lifting_method_name}"').fetch1("lifting_method")
+    lifting_method = (
+        LiftingMethodLookup & f'lifting_method_name="{lifting_method_name}"'
+    ).fetch1("lifting_method")
     lifting_key["lifting_method"] = lifting_method
     LiftingMethod.insert1(lifting_key, skip_duplicates=True)
     LiftingPerson.populate(key, reserve_jobs=reserve_jobs)
@@ -183,11 +193,16 @@ def smpl_pipeline(
         list of dict: keys of SMPLPerson that were computed
     """
 
-    tracking_keys = tracking_pipeline(key, tracking_method_name, reserve_jobs=reserve_jobs)
+    tracking_keys = tracking_pipeline(
+        key, tracking_method_name, reserve_jobs=reserve_jobs
+    )
     smpl_keys = []
     for key in tracking_keys:
         if len(PersonBbox & key) == 0:
-            if len(PersonBboxValid & key) == 1 and (PersonBboxValid & key).fetch1("video_subject_id") < 0:
+            if (
+                len(PersonBboxValid & key) == 1
+                and (PersonBboxValid & key).fetch1("video_subject_id") < 0
+            ):
                 print(f"Video {key} marked as invalid.")
                 return False
             print(f"Waiting for annotation of subject of interest. {key}")
@@ -195,7 +210,9 @@ def smpl_pipeline(
 
         # compute SMPL
         smpl_key = key.copy()
-        smpl_method = (SMPLMethodLookup & f'smpl_method_name="{smpl_method_name}"').fetch1("smpl_method")
+        smpl_method = (
+            SMPLMethodLookup & f'smpl_method_name="{smpl_method_name}"'
+        ).fetch1("smpl_method")
         smpl_key["smpl_method"] = smpl_method
         SMPLMethod.insert1(smpl_key, skip_duplicates=True)
         SMPLPerson.populate(smpl_key, reserve_jobs=reserve_jobs)
@@ -235,7 +252,12 @@ def bottomup_to_topdown(
 
         # get this here to confirm it will work below
         bbox_key = (
-            PersonBbox & key & (TrackingBboxMethodLookup & {"tracking_method_name": tracking_method_name})
+            PersonBbox
+            & key
+            & (
+                TrackingBboxMethodLookup
+                & {"tracking_method_name": tracking_method_name}
+            )
         ).fetch1("KEY")
 
         if bottom_up_method_name in ["Bridging_COCO_25", "Bridging_bml_movi_87"]:
@@ -245,7 +267,9 @@ def bottomup_to_topdown(
             BottomUpBridgingPerson.populate(bbox_key, reserve_jobs=reserve_jobs)
 
             if len(BottomUpBridgingPerson & bbox_key) == 0:
-                print(f"BottomUpBridgingPerson job must be reserved and not completed. {bbox_key}")
+                print(
+                    f"BottomUpBridgingPerson job must be reserved and not completed. {bbox_key}"
+                )
                 continue
 
         else:
@@ -255,24 +279,27 @@ def bottomup_to_topdown(
             BottomUpPeople.populate(key, reserve_jobs=reserve_jobs)
 
             # use the desired tracking method to identify the person
-            key["tracking_method"] = (TrackingBboxMethodLookup & {"tracking_method_name": tracking_method_name}).fetch1(
-                "tracking_method"
-            )
+            key["tracking_method"] = (
+                TrackingBboxMethodLookup
+                & {"tracking_method_name": tracking_method_name}
+            ).fetch1("tracking_method")
             BottomUpPerson.populate(key, reserve_jobs=reserve_jobs)
 
             if len(BottomUpPerson & key) == 0:
                 print(f"BottomUpPerson job must be reserved and not completed. {key}")
                 continue
 
-        bbox_key["top_down_method"] = (TopDownMethodLookup & {"top_down_method_name": bottom_up_method_name}).fetch1(
-            "top_down_method"
-        )
+        bbox_key["top_down_method"] = (
+            TopDownMethodLookup & {"top_down_method_name": bottom_up_method_name}
+        ).fetch1("top_down_method")
         TopDownMethod.insert1(bbox_key, skip_duplicates=True)
         TopDownPerson.populate(bbox_key, reserve_jobs=reserve_jobs)
 
 
 def bottom_up_pipeline(
-    keys: Union[Dict, List[Dict]], bottom_up_method_name: str = "OpenPose_HR", reserve_jobs: bool = False
+    keys: Union[Dict, List[Dict]],
+    bottom_up_method_name: str = "OpenPose_HR",
+    reserve_jobs: bool = False,
 ):
     """
     Run bottom up method on a video
@@ -289,7 +316,11 @@ def bottom_up_pipeline(
     for key in keys:
         key = key.copy()
 
-        if bottom_up_method_name in ["Bridging_COCO_25", "Bridging_bml_movi_87", "Bridging_OpenPose"]:
+        if bottom_up_method_name in [
+            "Bridging_COCO_25",
+            "Bridging_bml_movi_87",
+            "Bridging_OpenPose",
+        ]:
             from pose_pipeline.pipeline import BottomUpBridging
 
             print(f"Computing {bottom_up_method_name} for {key}")
@@ -297,7 +328,9 @@ def bottom_up_pipeline(
             BottomUpBridging.populate(key, reserve_jobs=reserve_jobs)
 
             if len(BottomUpBridging & key) == 0:
-                print(f"Bottom up job must be reserved and not completed. Skipping {key}")
+                print(
+                    f"Bottom up job must be reserved and not completed. Skipping {key}"
+                )
                 continue
 
             # migrate those results to BottomUpPeople
@@ -332,12 +365,17 @@ def blur_videos(keys: Union[Dict, List[Dict]], reserve_jobs: bool = False):
     for key in keys:
         print(key)
 
-        VideoInfo.populate(key, reserve_jobs=reserve_jobs)  # required for various downstream tasks
-        bottom_up_pipeline(key, bottom_up_method_name="Bridging_OpenPose", reserve_jobs=reserve_jobs)
+        VideoInfo.populate(
+            key, reserve_jobs=reserve_jobs
+        )  # required for various downstream tasks
+        bottom_up_pipeline(
+            key, bottom_up_method_name="Bridging_OpenPose", reserve_jobs=reserve_jobs
+        )
 
         # handle the case where some of the jobs where reserved
         if len(BottomUpPeople & key) > 0:
             BlurredVideo.populate(key, reserve_jobs=reserve_jobs)
+
 
 def hand_estimation_pipeline(
     keys: Union[Dict, List[Dict]],
@@ -357,18 +395,25 @@ def hand_estimation_pipeline(
 
     for key in keys:
         hand_key = (Video & key).fetch1("KEY")
-        bbox_method = (HandBboxMethodLookup & f'detection_method_name="{detection_method_name}"').fetch1(
-            "detection_method"
-        )
-        hand_key['detection_method'] = bbox_method
-        
-        # compute the person bbox (requires a method to have inserted the valid bbox)
-        HandBboxMethod.insert([hand_key], skip_duplicates=True, ignore_extra_fields=True)
+        bbox_method = (
+            HandBboxMethodLookup & f'detection_method_name="{detection_method_name}"'
+        ).fetch1("detection_method")
+        hand_key["detection_method"] = bbox_method
 
-        print('Performing Hand BBox and Estimation for', hand_key)
-        HandBbox.populate([hand_key],reserve_jobs=reserve_jobs)
-        estimation_method = (HandPoseEstimationMethodLookup & f'estimation_method_name="{estimation_method_name}"').fetch1("estimation_method")
-        hand_key['estimation_method'] = estimation_method
-        HandPoseEstimationMethod.insert([hand_key], skip_duplicates=True, ignore_extra_fields=True)
+        # compute the person bbox (requires a method to have inserted the valid bbox)
+        HandBboxMethod.insert(
+            [hand_key], skip_duplicates=True, ignore_extra_fields=True
+        )
+
+        print("Performing Hand BBox and Estimation for", hand_key)
+        HandBbox.populate([hand_key], reserve_jobs=reserve_jobs)
+        estimation_method = (
+            HandPoseEstimationMethodLookup
+            & f'estimation_method_name="{estimation_method_name}"'
+        ).fetch1("estimation_method")
+        hand_key["estimation_method"] = estimation_method
+        HandPoseEstimationMethod.insert(
+            [hand_key], skip_duplicates=True, ignore_extra_fields=True
+        )
 
         HandPoseEstimation.populate([hand_key], reserve_jobs=reserve_jobs)

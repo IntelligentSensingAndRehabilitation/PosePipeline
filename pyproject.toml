@@ -28,6 +28,7 @@ opencv-contrib = ["opencv-contrib-python>=4.0.0"]
 build = ["setuptools>70", "pip>22"]
 compile = ["chumpy>0.4"]
 dev = ["pytest","ipython","ipywidgets","ipympl","seaborn"]
+annotation = ["transformers>=4.36.0", "pillow>=10.0"]
 
 [tool.uv]
 no-build-isolation-package = ["chumpy"]
