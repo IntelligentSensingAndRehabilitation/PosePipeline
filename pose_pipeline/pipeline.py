@@ -120,8 +120,7 @@ class VideoInfo(dj.Computed):
                 cap.release()
                 raise Exception(
                     f"Frame count mismatch for {key}: metadata says {frames}, "
-                    f"but only {confirmed_frames} frames are readable. "
-                    f"Pre-process the video with make_browser_friendly() before inserting.")
+                    f"but only {confirmed_frames} frames are readable. ")
         key["num_frames"] = frames
 
         key["width"] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
