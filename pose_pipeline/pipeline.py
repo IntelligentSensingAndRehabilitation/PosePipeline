@@ -113,15 +113,16 @@ class VideoInfo(dj.Computed):
             cap.release()
             raise Exception("FPS is less than 1")
 
-        key["num_frames"] = frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        confirmed_frames = verify_frame_count(cap, frames)
-        if confirmed_frames != frames:
-            import warnings
-            warnings.warn(
-                f"Frame count mismatch for {key}: metadata says {frames}, "
-                f"but only {confirmed_frames} frames are readable. Using actual count.")   
-            frames = confirmed_frames
-            key["num_frames"] = frames
+        frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if frames > 0:
+            confirmed_frames = verify_frame_count(cap, frames)
+            if confirmed_frames != frames:
+                cap.release()
+                raise Exception(
+                    f"Frame count mismatch for {key}: metadata says {frames}, "
+                    f"but only {confirmed_frames} frames are readable. "
+                    f"Pre-process the video with make_browser_friendly() before inserting.")
+        key["num_frames"] = frames
 
         key["width"] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         key["height"] = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
