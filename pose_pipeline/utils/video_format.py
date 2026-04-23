@@ -48,7 +48,7 @@ def make_browser_friendly(
     Steps:
     1. Moves the original file into a backup folder (e.g. 'Original Browser Incompatible Videos').
     2. Run ffmpeg on the backup file, writing to a temp file first.
-    3. Atomically replace the original path with the transcoded output on success,
+    3. Replace the original path with the transcoded output on success,
        or restore the original from backup if ffmpeg fails.
     """
     base_dir = Path(base_dir)
