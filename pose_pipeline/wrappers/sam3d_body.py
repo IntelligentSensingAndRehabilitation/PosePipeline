@@ -338,7 +338,8 @@ def process_sam3d_pytorch(
     results = {
         "vertices": [], "keypoints_3d": [], "keypoints_2d": [],
         "camera_t": [], "focal_length": [], "body_pose_params": [],
-        "hand_pose_params": [], "shape_params": [], "global_rot": []
+        "hand_pose_params": [], "shape_params": [], "global_rot": [],
+        "joints": []
     }
     
     cap = cv2.VideoCapture(video_path)
@@ -378,6 +379,7 @@ def process_sam3d_pytorch(
             results["hand_pose_params"].append(p.get("hand_pose_params"))
             results["shape_params"].append(p.get("shape_params"))
             results["global_rot"].append(p.get("global_rot"))
+            results["joints"].append(p.get("pred_joint_coords"))
     finally:
         cap.release()
         
@@ -453,6 +455,7 @@ def process_sam3d_jax(
                 "hand_pose_params": np.asarray(res["hand"]),
                 "shape_params": np.asarray(res["shape"]),
                 "global_rot": np.asarray(res["global_rot"]),
+                "joints": np.asarray(res["pred_joint_coords"]) if res.get("pred_joint_coords") is not None else None,
             })
         else:
             results_list.append(None)

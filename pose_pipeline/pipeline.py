@@ -2583,6 +2583,7 @@ class SAM3DBody(dj.Computed):
     ---
     vertices           : longblob   # [N_frames, N_vertices, 3] MHR mesh vertices
     keypoints_3d       : longblob   # [N_frames, 70, 3] 3D joint positions
+    joints             : longblob   # [N_frames, 127, 3] MHR rig kinematic tree joints
     keypoints_2d       : longblob   # [N_frames, 70, 2] 2D projected keypoints
     camera_t           : longblob   # [N_frames, 3] camera translations
     focal_length       : longblob   # [N_frames] focal lengths
