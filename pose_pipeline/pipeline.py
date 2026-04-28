@@ -2615,7 +2615,7 @@ class SAM3DBody(dj.Computed):
         Insert phase: store results in the table.
         Runs inside a fresh transaction after data validation.
         """
-        self.insert1(res)
+        self.insert1(res, skip_duplicates=True)
 
 
 @schema
