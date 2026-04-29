@@ -506,7 +506,7 @@ def process_sam3d_body(
     results["frame_valid"] = present
     
     # Cleanup DataJoint temp file
-    if "tmp" in str(video_path) and os.path.exists(video_path):
+    if os.path.exists(video_path):
         os.remove(video_path)
 
     return results
