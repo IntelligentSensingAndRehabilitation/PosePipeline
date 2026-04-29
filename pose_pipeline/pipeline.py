@@ -102,24 +102,36 @@ class VideoInfo(dj.Computed):
     """
 
     def make(self, key, override=False):
-
+        from .utils.video_format import verify_frame_count
+        import warnings
+        
         key = key.copy()
         video, start_time = (Video & key).fetch1("video", "start_time")
 
         cap = cv2.VideoCapture(video)
-        key["fps"] = fps = cap.get(cv2.CAP_PROP_FPS)
-        if (key["fps"] < 1):
+        try:
+            key["fps"] = fps = cap.get(cv2.CAP_PROP_FPS)
+            if (key["fps"] < 1):
+                raise Exception("FPS is less than 1")
+
+            frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if frames > 0:
+                confirmed_frames = verify_frame_count(cap, frames)
+                if confirmed_frames != frames:
+                    warnings.warn(
+                        f"Frame count mismatch for {key}: metadata says {frames}, "
+                        f"but only {confirmed_frames} frames are readable. "
+                        f"Using confirmed count.")
+                    frames = confirmed_frames
+            key["num_frames"] = frames
+
+            key["width"] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            key["height"] = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            key["timestamps"] = [start_time + timedelta(0, i / fps) for i in range(frames)]
+            key["delta_time"] = [timedelta(0, i / fps).total_seconds() for i in range(frames)]
+        finally:
             cap.release()
-            raise Exception("FPS is less than 1")
-
-        key["num_frames"] = frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        key["width"] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        key["height"] = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        key["timestamps"] = [start_time + timedelta(0, i / fps) for i in range(frames)]
-        key["delta_time"] = [timedelta(0, i / fps).total_seconds() for i in range(frames)]
-
-        cap.release()
-        os.remove(video)
+            os.remove(video)
 
         self.insert1(key, allow_direct_insert=override)
 
