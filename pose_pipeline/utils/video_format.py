@@ -1,4 +1,3 @@
-from pose_pipeline.pipeline import Video
 import subprocess
 import tempfile
 import os
@@ -21,7 +20,9 @@ def compress(fn, bitrate=5):
 
 def insert_local_video(filename, video_start_time, local_path, video_project="TESTING", skip_duplicates=False):
     """Insert local video into the Pose Pipeline"""
-
+    
+    from pose_pipeline.pipeline import Video
+    
     assert os.path.exists(local_path)
 
     vid_struct = {
@@ -65,13 +66,23 @@ def make_browser_friendly(
     backup_dir = base_dir / backup_folder_name
     backup_dir.mkdir(exist_ok=True)
 
-    # Move original file to backup folder
-    backup_path = backup_dir / filename
+    # Move original to backup folder with '_original' appended — only one original should ever exist
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix
+    backup_path = backup_dir / f"{stem}_original{suffix}"
+    if backup_path.exists():
+        raise FileExistsError(
+            f"Original backup already exists at {backup_path}. "
+            f"The video may have already been processed."
+        )
     print(f"Moving original file:\n  {original_path}\n→ {backup_path}")
     original_path.rename(backup_path)
 
-    # Write to a temp file first; only replace the original on success
-    fd, temp_output = tempfile.mkstemp(suffix=original_path.suffix, dir=str(base_dir))
+    # Always output as .mp4 for guaranteed browser/Jupyter compatibility
+    output_path = original_path.with_suffix(".mp4")
+
+    # Write to a temp file first; only replace the output path on success
+    fd, temp_output = tempfile.mkstemp(suffix=".mp4", dir=str(base_dir))
     os.close(fd)
     temp_output_path = Path(temp_output)
 
@@ -83,11 +94,12 @@ def make_browser_friendly(
         "-movflags", "+faststart",       # put moov atom at front for streaming
         "-c:a", "aac",
         "-b:a", "128k",
+        "-f", "mp4",
     ]
 
     try:
         _run_ffmpeg(backup_path, temp_output_path, extra_args)
-        temp_output_path.replace(original_path)
+        temp_output_path.replace(output_path)
     except Exception:
         if temp_output_path.exists():
             temp_output_path.unlink()
@@ -95,8 +107,8 @@ def make_browser_friendly(
             backup_path.rename(original_path)
         raise
 
-    print(f"Transcoded video written to: {original_path}")
-    return str(original_path), str(backup_path)
+    print(f"Transcoded video written to: {output_path}")
+    return str(output_path), str(backup_path)
 
 
 def verify_frame_count(cap, reported_frames):
@@ -115,19 +127,18 @@ def verify_frame_count(cap, reported_frames):
     if not is_readable:
         return 0
 
-    # Slow path: binary search between 0 and reported_frames
-    # last_good  = highest frame index confirmed readable (frame 0 verified above)
-    # first_bad  = lowest frame index confirmed unreadable
-    last_good, first_bad = 0, reported_frames - 1
+    # Slow path: binary search to find the highest readable frame index.
+    # last_good -> highest frame index confirmed readable
+    # upper_bound ->  highest index that could still be readable; shrinks as frames fail
+    last_good, upper_bound = 0, reported_frames - 1
 
-    while last_good < first_bad:
-        test_frame = (last_good + first_bad + 1) // 2
+    while last_good < upper_bound:
+        test_frame = (last_good + upper_bound + 1) // 2
         cap.set(cv2.CAP_PROP_POS_FRAMES, test_frame)
         is_readable, _ = cap.read()
         if is_readable:
             last_good = test_frame
         else:
-            first_bad = test_frame - 1
+            upper_bound = test_frame - 1
 
-    # last_good is a 0-indexed frame number, so actual count is last_good + 1
     return last_good + 1
