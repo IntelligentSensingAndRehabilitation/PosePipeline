@@ -103,6 +103,7 @@ class VideoInfo(dj.Computed):
 
     def make(self, key, override=False):
         from .utils.video_format import verify_frame_count
+        import warnings
         
         key = key.copy()
         video, start_time = (Video & key).fetch1("video", "start_time")
@@ -117,10 +118,11 @@ class VideoInfo(dj.Computed):
             if frames > 0:
                 confirmed_frames = verify_frame_count(cap, frames)
                 if confirmed_frames != frames:
-                    raise Exception(
+                    warnings.warn(
                         f"Frame count mismatch for {key}: metadata says {frames}, "
                         f"but only {confirmed_frames} frames are readable. "
-                        f"Pre-process the video with make_browser_friendly() before inserting.")
+                        f"Using confirmed count.")
+                    frames = confirmed_frames
             key["num_frames"] = frames
 
             key["width"] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
