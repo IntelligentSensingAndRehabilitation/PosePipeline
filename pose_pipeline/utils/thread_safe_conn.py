@@ -2,11 +2,22 @@ import threading
 
 import datajoint as dj
 
+# TODO: Deprecate this module once the DataJoint <2.0 pin is removed.
+# DataJoint 2.2 introduces native per-thread connection handling, so this
+# monkey-patch will no longer be necessary.  See:
+# https://docs.datajoint.com/about/whats-new-22/
+
 _dj_thread_local = threading.local()
 
 
 def make_datajoint_thread_safe() -> None:
     """Patch dj.conn() to return per-thread connections instead of a process-wide singleton.
+
+    .. deprecated::
+        This workaround is only needed while DataJoint is pinned to ``<2.0``.
+        DataJoint 2.2 adds native per-thread connection support, making this
+        patch unnecessary.  Remove the call and delete this module once the
+        version pin is lifted.  See https://docs.datajoint.com/about/whats-new-22/
 
     DataJoint's default ``dj.conn()`` returns a single pymysql connection shared across
     the entire process.  pymysql is **not** thread-safe — concurrent queries from multiple
