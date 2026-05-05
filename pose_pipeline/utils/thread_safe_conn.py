@@ -45,6 +45,11 @@ def make_datajoint_thread_safe() -> None:
             return _original_conn(host=host, user=user, password=password, reset=reset, use_tls=use_tls)
 
         if not hasattr(_dj_thread_local, "connection") or reset:
+            if reset and hasattr(_dj_thread_local, "connection"):
+                try:
+                    _dj_thread_local.connection.close()
+                except Exception:
+                    pass
             main = _original_conn()
             h = host if host is not None else main.conn_info["host"]
             port = main.conn_info.get("port")
