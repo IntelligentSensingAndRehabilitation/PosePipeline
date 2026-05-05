@@ -1,0 +1,1 @@
+from .thread_safe_conn import make_datajoint_thread_safe
