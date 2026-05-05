@@ -55,7 +55,7 @@ def make_datajoint_thread_safe() -> None:
             port = main.conn_info.get("port")
             u = user if user is not None else main.conn_info["user"]
             p = password if password is not None else main.conn_info["passwd"]
-            t = use_tls if use_tls is not None else dj.config.get("database.use_tls")
+            t = use_tls if use_tls is not None else main.conn_info.get("ssl_input")
             _dj_thread_local.connection = dj.Connection(h, u, p, port=port, use_tls=t)
 
         return _dj_thread_local.connection
