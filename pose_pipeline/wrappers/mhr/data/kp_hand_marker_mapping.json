@@ -1,0 +1,222 @@
+{
+  "rwripinkieside": {
+    "match_type": "vertex",
+    "index": 14092,
+    "confidence_weight": 0.45
+  },
+  "wrist_r": {
+    "match_type": "sam3d_joint",
+    "index": 41,
+    "confidence_weight": 0.9
+  },
+  "cmc1_r": {
+    "match_type": "sam3d_joint",
+    "index": 24,
+    "confidence_weight": 0.8
+  },
+  "mcp1_r": {
+    "match_type": "sam3d_joint",
+    "index": 23,
+    "confidence_weight": 0.8
+  },
+  "ip1_r": {
+    "match_type": "sam3d_joint",
+    "index": 22,
+    "confidence_weight": 0.7
+  },
+  "tip1_r": {
+    "match_type": "sam3d_joint",
+    "index": 21,
+    "confidence_weight": 0.6
+  },
+  "mcp2_r": {
+    "match_type": "sam3d_joint",
+    "index": 28,
+    "confidence_weight": 0.8
+  },
+  "pip2_r": {
+    "match_type": "sam3d_joint",
+    "index": 27,
+    "confidence_weight": 0.7
+  },
+  "dip2_r": {
+    "match_type": "sam3d_joint",
+    "index": 26,
+    "confidence_weight": 0.6
+  },
+  "tip2_r": {
+    "match_type": "sam3d_joint",
+    "index": 25,
+    "confidence_weight": 0.5
+  },
+  "mcp3_r": {
+    "match_type": "sam3d_joint",
+    "index": 32,
+    "confidence_weight": 0.8
+  },
+  "pip3_r": {
+    "match_type": "sam3d_joint",
+    "index": 31,
+    "confidence_weight": 0.7
+  },
+  "dip3_r": {
+    "match_type": "sam3d_joint",
+    "index": 30,
+    "confidence_weight": 0.6
+  },
+  "tip3_r": {
+    "match_type": "sam3d_joint",
+    "index": 29,
+    "confidence_weight": 0.5
+  },
+  "mcp4_r": {
+    "match_type": "sam3d_joint",
+    "index": 36,
+    "confidence_weight": 0.8
+  },
+  "pip4_r": {
+    "match_type": "sam3d_joint",
+    "index": 35,
+    "confidence_weight": 0.7
+  },
+  "dip4_r": {
+    "match_type": "sam3d_joint",
+    "index": 34,
+    "confidence_weight": 0.6
+  },
+  "tip4_r": {
+    "match_type": "sam3d_joint",
+    "index": 33,
+    "confidence_weight": 0.5
+  },
+  "mcp5_r": {
+    "match_type": "sam3d_joint",
+    "index": 40,
+    "confidence_weight": 0.8
+  },
+  "pip5_r": {
+    "match_type": "sam3d_joint",
+    "index": 39,
+    "confidence_weight": 0.7
+  },
+  "dip5_r": {
+    "match_type": "sam3d_joint",
+    "index": 38,
+    "confidence_weight": 0.6
+  },
+  "tip5_r": {
+    "match_type": "sam3d_joint",
+    "index": 37,
+    "confidence_weight": 0.5
+  },
+  "lwripinkieside": {
+    "match_type": "vertex",
+    "index": 8906,
+    "confidence_weight": 0.45
+  },
+  "wrist_l": {
+    "match_type": "sam3d_joint",
+    "index": 62,
+    "confidence_weight": 0.9
+  },
+  "cmc1_l": {
+    "match_type": "sam3d_joint",
+    "index": 45,
+    "confidence_weight": 0.8
+  },
+  "mcp1_l": {
+    "match_type": "sam3d_joint",
+    "index": 44,
+    "confidence_weight": 0.8
+  },
+  "ip1_l": {
+    "match_type": "sam3d_joint",
+    "index": 43,
+    "confidence_weight": 0.7
+  },
+  "tip1_l": {
+    "match_type": "sam3d_joint",
+    "index": 42,
+    "confidence_weight": 0.6
+  },
+  "mcp2_l": {
+    "match_type": "sam3d_joint",
+    "index": 49,
+    "confidence_weight": 0.8
+  },
+  "pip2_l": {
+    "match_type": "sam3d_joint",
+    "index": 48,
+    "confidence_weight": 0.7
+  },
+  "dip2_l": {
+    "match_type": "sam3d_joint",
+    "index": 47,
+    "confidence_weight": 0.6
+  },
+  "tip2_l": {
+    "match_type": "sam3d_joint",
+    "index": 46,
+    "confidence_weight": 0.5
+  },
+  "mcp3_l": {
+    "match_type": "sam3d_joint",
+    "index": 53,
+    "confidence_weight": 0.8
+  },
+  "pip3_l": {
+    "match_type": "sam3d_joint",
+    "index": 52,
+    "confidence_weight": 0.7
+  },
+  "dip3_l": {
+    "match_type": "sam3d_joint",
+    "index": 51,
+    "confidence_weight": 0.6
+  },
+  "tip3_l": {
+    "match_type": "sam3d_joint",
+    "index": 50,
+    "confidence_weight": 0.5
+  },
+  "mcp4_l": {
+    "match_type": "sam3d_joint",
+    "index": 57,
+    "confidence_weight": 0.8
+  },
+  "pip4_l": {
+    "match_type": "sam3d_joint",
+    "index": 56,
+    "confidence_weight": 0.7
+  },
+  "dip4_l": {
+    "match_type": "sam3d_joint",
+    "index": 55,
+    "confidence_weight": 0.6
+  },
+  "tip4_l": {
+    "match_type": "sam3d_joint",
+    "index": 54,
+    "confidence_weight": 0.5
+  },
+  "mcp5_l": {
+    "match_type": "sam3d_joint",
+    "index": 61,
+    "confidence_weight": 0.8
+  },
+  "pip5_l": {
+    "match_type": "sam3d_joint",
+    "index": 60,
+    "confidence_weight": 0.7
+  },
+  "dip5_l": {
+    "match_type": "sam3d_joint",
+    "index": 59,
+    "confidence_weight": 0.6
+  },
+  "tip5_l": {
+    "match_type": "sam3d_joint",
+    "index": 58,
+    "confidence_weight": 0.5
+  }
+}

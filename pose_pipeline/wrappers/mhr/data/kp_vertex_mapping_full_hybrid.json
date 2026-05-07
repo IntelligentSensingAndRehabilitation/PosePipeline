@@ -1,0 +1,602 @@
+{
+  "backneck": {
+    "match_type": "vertex",
+    "index": 5770,
+    "confidence_weight": 0.711249828338623
+  },
+  "upperback": {
+    "match_type": "vertex",
+    "index": 5753,
+    "confidence_weight": 0.47455698251724243
+  },
+  "clavicle": {
+    "match_type": "vertex",
+    "index": 2853,
+    "confidence_weight": 0.7732786536216736
+  },
+  "sternum": {
+    "match_type": "vertex",
+    "index": 5698,
+    "confidence_weight": 0.5362198352813721
+  },
+  "umbilicus": {
+    "match_type": "vertex",
+    "index": 5711,
+    "confidence_weight": 0.2619161903858185
+  },
+  "lfronthead": {
+    "match_type": "vertex",
+    "index": 2533,
+    "confidence_weight": 0.7374683618545532
+  },
+  "lbackhead": {
+    "match_type": "vertex",
+    "index": 2375,
+    "confidence_weight": 0.8071975708007812
+  },
+  "lback": {
+    "match_type": "vertex",
+    "index": 6242,
+    "confidence_weight": 0.4294596016407013
+  },
+  "lshom": {
+    "match_type": "vertex",
+    "index": 6848,
+    "confidence_weight": 0.3255203366279602
+  },
+  "lelbm": {
+    "match_type": "vertex",
+    "index": 8379,
+    "confidence_weight": 0.40962088108062744
+  },
+  "lwrithumbside": {
+    "match_type": "vertex",
+    "index": 8895,
+    "confidence_weight": 0.9737767577171326
+  },
+  "lwripinkieside": {
+    "match_type": "vertex",
+    "index": 8906,
+    "confidence_weight": 1.5132226943969727
+  },
+  "lasis": {
+    "match_type": "vertex",
+    "index": 6662,
+    "confidence_weight": 0.6855523586273193
+  },
+  "lpsis": {
+    "match_type": "vertex",
+    "index": 5958,
+    "confidence_weight": 0.4714429974555969
+  },
+  "lfrontthigh": {
+    "match_type": "vertex",
+    "index": 11303,
+    "confidence_weight": 0.5633066892623901
+  },
+  "lthigh": {
+    "match_type": "vertex",
+    "index": 6193,
+    "confidence_weight": 0.4833410978317261
+  },
+  "lknem": {
+    "match_type": "vertex",
+    "index": 11546,
+    "confidence_weight": 1.0107855796813965
+  },
+  "lankm": {
+    "match_type": "vertex",
+    "index": 12175,
+    "confidence_weight": 1.1878196001052856
+  },
+  "LHeel": {
+    "match_type": "vertex",
+    "index": 12243,
+    "confidence_weight": 0.8642318248748779
+  },
+  "lfifthmetatarsal": {
+    "match_type": "vertex",
+    "index": 12649,
+    "confidence_weight": 1.3555114269256592
+  },
+  "LBigToe": {
+    "match_type": "vertex",
+    "index": 13051,
+    "confidence_weight": 1.2744420766830444
+  },
+  "lcheek": {
+    "match_type": "vertex",
+    "index": 1355,
+    "confidence_weight": 0.7464144825935364
+  },
+  "lbreast": {
+    "match_type": "vertex",
+    "index": 6157,
+    "confidence_weight": 0.45819079875946045
+  },
+  "lelbinner": {
+    "match_type": "vertex",
+    "index": 8421,
+    "confidence_weight": 0.3658800721168518
+  },
+  "lwaist": {
+    "match_type": "vertex",
+    "index": 6649,
+    "confidence_weight": 0.4791228175163269
+  },
+  "lfrontinnerthigh": {
+    "match_type": "vertex",
+    "index": 11406,
+    "confidence_weight": 0.9183651804924011
+  },
+  "linnerknee": {
+    "match_type": "vertex",
+    "index": 11627,
+    "confidence_weight": 0.9836320281028748
+  },
+  "lshin": {
+    "match_type": "vertex",
+    "index": 11807,
+    "confidence_weight": 1.0573420524597168
+  },
+  "lfirstmetatarsal": {
+    "match_type": "vertex",
+    "index": 12658,
+    "confidence_weight": 1.3940327167510986
+  },
+  "lfourthtoe": {
+    "match_type": "vertex",
+    "index": 13042,
+    "confidence_weight": 1.3945897817611694
+  },
+  "lscapula": {
+    "match_type": "vertex",
+    "index": 6118,
+    "confidence_weight": 0.33421003818511963
+  },
+  "lbum": {
+    "match_type": "vertex",
+    "index": 6323,
+    "confidence_weight": 0.5163768529891968
+  },
+  "rfronthead": {
+    "match_type": "vertex",
+    "index": 4598,
+    "confidence_weight": 0.7374683618545532
+  },
+  "rbackhead": {
+    "match_type": "vertex",
+    "index": 5261,
+    "confidence_weight": 0.8071975708007812
+  },
+  "rback": {
+    "match_type": "vertex",
+    "index": 7293,
+    "confidence_weight": 0.4294596016407013
+  },
+  "rshom": {
+    "match_type": "vertex",
+    "index": 8029,
+    "confidence_weight": 0.3255203366279602
+  },
+  "relbm": {
+    "match_type": "vertex",
+    "index": 13527,
+    "confidence_weight": 0.40962088108062744
+  },
+  "rwrithumbside": {
+    "match_type": "vertex",
+    "index": 14103,
+    "confidence_weight": 0.9737767577171326
+  },
+  "rwripinkieside": {
+    "match_type": "vertex",
+    "index": 14092,
+    "confidence_weight": 1.5132226943969727
+  },
+  "rasis": {
+    "match_type": "vertex",
+    "index": 7836,
+    "confidence_weight": 0.6855523586273193
+  },
+  "rpsis": {
+    "match_type": "vertex",
+    "index": 7063,
+    "confidence_weight": 0.4714429974555969
+  },
+  "rfrontthigh": {
+    "match_type": "vertex",
+    "index": 16464,
+    "confidence_weight": 0.5633066892623901
+  },
+  "rthigh": {
+    "match_type": "vertex",
+    "index": 7342,
+    "confidence_weight": 0.4833410978317261
+  },
+  "rknem": {
+    "match_type": "vertex",
+    "index": 16743,
+    "confidence_weight": 1.0107855796813965
+  },
+  "rankm": {
+    "match_type": "vertex",
+    "index": 17369,
+    "confidence_weight": 1.1878196001052856
+  },
+  "RHeel": {
+    "match_type": "vertex",
+    "index": 17425,
+    "confidence_weight": 0.8642318248748779
+  },
+  "rfifthmetatarsal": {
+    "match_type": "vertex",
+    "index": 17840,
+    "confidence_weight": 1.3555114269256592
+  },
+  "RBigToe": {
+    "match_type": "vertex",
+    "index": 18208,
+    "confidence_weight": 1.2744420766830444
+  },
+  "rcheek": {
+    "match_type": "vertex",
+    "index": 4241,
+    "confidence_weight": 0.7464144825935364
+  },
+  "rbreast": {
+    "match_type": "vertex",
+    "index": 7378,
+    "confidence_weight": 0.45819079875946045
+  },
+  "relbinner": {
+    "match_type": "vertex",
+    "index": 13607,
+    "confidence_weight": 0.3658800721168518
+  },
+  "rwaist": {
+    "match_type": "vertex",
+    "index": 7849,
+    "confidence_weight": 0.4791228175163269
+  },
+  "rfrontinnerthigh": {
+    "match_type": "vertex",
+    "index": 16588,
+    "confidence_weight": 0.9183651804924011
+  },
+  "rinnerknee": {
+    "match_type": "vertex",
+    "index": 16790,
+    "confidence_weight": 0.9836320281028748
+  },
+  "rshin": {
+    "match_type": "vertex",
+    "index": 16986,
+    "confidence_weight": 1.0573420524597168
+  },
+  "rfirstmetatarsal": {
+    "match_type": "vertex",
+    "index": 17831,
+    "confidence_weight": 1.3940327167510986
+  },
+  "rfourthtoe": {
+    "match_type": "vertex",
+    "index": 18218,
+    "confidence_weight": 1.3945897817611694
+  },
+  "rscapula": {
+    "match_type": "vertex",
+    "index": 7175,
+    "confidence_weight": 0.33421003818511963
+  },
+  "rbum": {
+    "match_type": "vertex",
+    "index": 7446,
+    "confidence_weight": 0.5163768529891968
+  },
+  "Head": {
+    "match_type": "vertex",
+    "index": 2818,
+    "confidence_weight": 1.256805419921875
+  },
+  "mhip": {
+    "match_type": "vertex",
+    "index": 5736,
+    "confidence_weight": 0.9876358509063721
+  },
+  "CHip": {
+    "match_type": "vertex",
+    "index": 5713,
+    "confidence_weight": 0.38580724596977234
+  },
+  "Neck": {
+    "match_type": "sam3d_joint",
+    "index": 69,
+    "confidence_weight": 1.3225737810134888
+  },
+  "LAnkle": {
+    "match_type": "sam3d_joint",
+    "index": 13,
+    "confidence_weight": 0.8740994930267334
+  },
+  "LHip": {
+    "match_type": "vertex",
+    "index": 6677,
+    "confidence_weight": 0.38635700941085815
+  },
+  "LKnee": {
+    "match_type": "sam3d_joint",
+    "index": 11,
+    "confidence_weight": 1.5015349388122559
+  },
+  "LShoulder": {
+    "match_type": "vertex",
+    "index": 6865,
+    "confidence_weight": 0.21700641512870789
+  },
+  "LFoot": {
+    "match_type": "vertex",
+    "index": 13047,
+    "confidence_weight": 1.417842149734497
+  },
+  "RAnkle": {
+    "match_type": "vertex",
+    "index": 17348,
+    "confidence_weight": 0.8740994930267334
+  },
+  "RHip": {
+    "match_type": "vertex",
+    "index": 7828,
+    "confidence_weight": 0.38635700941085815
+  },
+  "RKnee": {
+    "match_type": "sam3d_joint",
+    "index": 12,
+    "confidence_weight": 1.5015349388122559
+  },
+  "RShoulder": {
+    "match_type": "vertex",
+    "index": 8012,
+    "confidence_weight": 0.21700641512870789
+  },
+  "RFoot": {
+    "match_type": "vertex",
+    "index": 18212,
+    "confidence_weight": 1.417842149734497
+  },
+  "tip1_r": {
+    "match_type": "joint",
+    "index": 21,
+    "confidence_weight": 1.3570855855941772
+  },
+  "ip1_r": {
+    "match_type": "joint",
+    "index": 22,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp1_r": {
+    "match_type": "joint",
+    "index": 23,
+    "confidence_weight": 1.3570855855941772
+  },
+  "cmc1_r": {
+    "match_type": "joint",
+    "index": 24,
+    "confidence_weight": 1.311445951461792
+  },
+  "tip2_r": {
+    "match_type": "joint",
+    "index": 25,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip2_r": {
+    "match_type": "joint",
+    "index": 26,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip2_r": {
+    "match_type": "joint",
+    "index": 27,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp2_r": {
+    "match_type": "joint",
+    "index": 28,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip3_r": {
+    "match_type": "joint",
+    "index": 29,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip3_r": {
+    "match_type": "joint",
+    "index": 30,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip3_r": {
+    "match_type": "joint",
+    "index": 31,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp3_r": {
+    "match_type": "joint",
+    "index": 32,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip4_r": {
+    "match_type": "joint",
+    "index": 33,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip4_r": {
+    "match_type": "joint",
+    "index": 34,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip4_r": {
+    "match_type": "joint",
+    "index": 35,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp4_r": {
+    "match_type": "joint",
+    "index": 36,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip5_r": {
+    "match_type": "joint",
+    "index": 37,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip5_r": {
+    "match_type": "joint",
+    "index": 38,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip5_r": {
+    "match_type": "joint",
+    "index": 39,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp5_r": {
+    "match_type": "joint",
+    "index": 40,
+    "confidence_weight": 1.3570855855941772
+  },
+  "wrist_r": {
+    "match_type": "joint",
+    "index": 41,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip1_l": {
+    "match_type": "joint",
+    "index": 42,
+    "confidence_weight": 1.3570855855941772
+  },
+  "ip1_l": {
+    "match_type": "joint",
+    "index": 43,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp1_l": {
+    "match_type": "joint",
+    "index": 44,
+    "confidence_weight": 1.3570855855941772
+  },
+  "cmc1_l": {
+    "match_type": "joint",
+    "index": 45,
+    "confidence_weight": 1.1269830465316772
+  },
+  "tip2_l": {
+    "match_type": "joint",
+    "index": 46,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip2_l": {
+    "match_type": "joint",
+    "index": 47,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip2_l": {
+    "match_type": "joint",
+    "index": 48,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp2_l": {
+    "match_type": "joint",
+    "index": 49,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip3_l": {
+    "match_type": "joint",
+    "index": 50,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip3_l": {
+    "match_type": "joint",
+    "index": 51,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip3_l": {
+    "match_type": "joint",
+    "index": 52,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp3_l": {
+    "match_type": "joint",
+    "index": 53,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip4_l": {
+    "match_type": "joint",
+    "index": 54,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip4_l": {
+    "match_type": "joint",
+    "index": 55,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip4_l": {
+    "match_type": "joint",
+    "index": 56,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp4_l": {
+    "match_type": "joint",
+    "index": 57,
+    "confidence_weight": 1.3570855855941772
+  },
+  "tip5_l": {
+    "match_type": "joint",
+    "index": 58,
+    "confidence_weight": 1.3570855855941772
+  },
+  "dip5_l": {
+    "match_type": "joint",
+    "index": 59,
+    "confidence_weight": 1.3570855855941772
+  },
+  "pip5_l": {
+    "match_type": "joint",
+    "index": 60,
+    "confidence_weight": 1.3570855855941772
+  },
+  "mcp5_l": {
+    "match_type": "joint",
+    "index": 61,
+    "confidence_weight": 1.3570855855941772
+  },
+  "wrist_l": {
+    "match_type": "joint",
+    "index": 62,
+    "confidence_weight": 1.3482915163040161
+  },
+  "nose": {
+    "match_type": "sam3d_joint",
+    "index": 0,
+    "confidence_weight": 0.7006147503852844
+  },
+  "leye": {
+    "match_type": "sam3d_joint",
+    "index": 1,
+    "confidence_weight": 0.8312665224075317
+  },
+  "reye": {
+    "match_type": "sam3d_joint",
+    "index": 2,
+    "confidence_weight": 0.8312665224075317
+  },
+  "lear": {
+    "match_type": "sam3d_joint",
+    "index": 3,
+    "confidence_weight": 0.9691749811172485
+  },
+  "rear": {
+    "match_type": "sam3d_joint",
+    "index": 4,
+    "confidence_weight": 0.9691749811172485
+  }
+}

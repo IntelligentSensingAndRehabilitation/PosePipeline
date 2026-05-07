@@ -1,0 +1,437 @@
+{
+  "backneck": {
+    "match_type": "vertex",
+    "index": 5770,
+    "confidence_weight": 0.6985910534858704
+  },
+  "upperback": {
+    "match_type": "vertex",
+    "index": 5754,
+    "confidence_weight": 0.6302818655967712
+  },
+  "clavicle": {
+    "match_type": "vertex",
+    "index": 2855,
+    "confidence_weight": 0.617173433303833
+  },
+  "sternum": {
+    "match_type": "vertex",
+    "index": 5698,
+    "confidence_weight": 0.6153734922409058
+  },
+  "umbilicus": {
+    "match_type": "vertex",
+    "index": 5712,
+    "confidence_weight": 0.41470128297805786
+  },
+  "lfronthead": {
+    "match_type": "vertex",
+    "index": 1054,
+    "confidence_weight": 0.8721859455108643
+  },
+  "lbackhead": {
+    "match_type": "vertex",
+    "index": 2374,
+    "confidence_weight": 0.5826488733291626
+  },
+  "lback": {
+    "match_type": "vertex",
+    "index": 6242,
+    "confidence_weight": 0.5436683297157288
+  },
+  "lshom": {
+    "match_type": "vertex",
+    "index": 6847,
+    "confidence_weight": 0.5186629295349121
+  },
+  "lupperarm": {
+    "match_type": "vertex",
+    "index": 8102,
+    "confidence_weight": 0.515491247177124
+  },
+  "lelbm": {
+    "match_type": "vertex",
+    "index": 8379,
+    "confidence_weight": 0.5703054666519165
+  },
+  "lforearm": {
+    "match_type": "vertex",
+    "index": 8535,
+    "confidence_weight": 0.8420549035072327
+  },
+  "lwrithumbside": {
+    "match_type": "vertex",
+    "index": 8922,
+    "confidence_weight": 0.6789031028747559
+  },
+  "lwripinkieside": {
+    "match_type": "vertex",
+    "index": 8962,
+    "confidence_weight": 0.9271081686019897
+  },
+  "lfin": {
+    "match_type": "vertex",
+    "index": 9216,
+    "confidence_weight": 0.6931259632110596
+  },
+  "lasis": {
+    "match_type": "vertex",
+    "index": 6663,
+    "confidence_weight": 0.9976330995559692
+  },
+  "lpsis": {
+    "match_type": "vertex",
+    "index": 5959,
+    "confidence_weight": 0.5283424854278564
+  },
+  "lfrontthigh": {
+    "match_type": "vertex",
+    "index": 11328,
+    "confidence_weight": 0.9205825328826904
+  },
+  "lthigh": {
+    "match_type": "vertex",
+    "index": 6193,
+    "confidence_weight": 0.7945318222045898
+  },
+  "lknem": {
+    "match_type": "vertex",
+    "index": 11546,
+    "confidence_weight": 1.2844054698944092
+  },
+  "lankm": {
+    "match_type": "vertex",
+    "index": 12175,
+    "confidence_weight": 2.054136276245117
+  },
+  "LHeel": {
+    "match_type": "vertex",
+    "index": 12244,
+    "confidence_weight": 2.0385634899139404
+  },
+  "lfifthmetatarsal": {
+    "match_type": "vertex",
+    "index": 12649,
+    "confidence_weight": 2.090261697769165
+  },
+  "LBigToe": {
+    "match_type": "vertex",
+    "index": 13050,
+    "confidence_weight": 2.0628278255462646
+  },
+  "lcheek": {
+    "match_type": "vertex",
+    "index": 1279,
+    "confidence_weight": 0.6577380299568176
+  },
+  "lbreast": {
+    "match_type": "vertex",
+    "index": 6157,
+    "confidence_weight": 0.5332830548286438
+  },
+  "lelbinner": {
+    "match_type": "vertex",
+    "index": 8421,
+    "confidence_weight": 0.5101732015609741
+  },
+  "lwaist": {
+    "match_type": "vertex",
+    "index": 6649,
+    "confidence_weight": 0.6193007826805115
+  },
+  "lthumb": {
+    "match_type": "vertex",
+    "index": 9123,
+    "confidence_weight": 0.6137621402740479
+  },
+  "lfrontinnerthigh": {
+    "match_type": "vertex",
+    "index": 11406,
+    "confidence_weight": 1.0057100057601929
+  },
+  "linnerknee": {
+    "match_type": "vertex",
+    "index": 11627,
+    "confidence_weight": 1.0585765838623047
+  },
+  "lshin": {
+    "match_type": "vertex",
+    "index": 11807,
+    "confidence_weight": 1.6167904138565063
+  },
+  "lfirstmetatarsal": {
+    "match_type": "vertex",
+    "index": 12711,
+    "confidence_weight": 2.092742681503296
+  },
+  "lfourthtoe": {
+    "match_type": "vertex",
+    "index": 13041,
+    "confidence_weight": 2.0698659420013428
+  },
+  "lscapula": {
+    "match_type": "vertex",
+    "index": 6118,
+    "confidence_weight": 0.46904510259628296
+  },
+  "lbum": {
+    "match_type": "vertex",
+    "index": 6439,
+    "confidence_weight": 0.7204840779304504
+  },
+  "rfronthead": {
+    "match_type": "vertex",
+    "index": 3940,
+    "confidence_weight": 0.8721859455108643
+  },
+  "rbackhead": {
+    "match_type": "vertex",
+    "index": 5260,
+    "confidence_weight": 0.5826488733291626
+  },
+  "rback": {
+    "match_type": "vertex",
+    "index": 7293,
+    "confidence_weight": 0.5436683297157288
+  },
+  "rshom": {
+    "match_type": "vertex",
+    "index": 8029,
+    "confidence_weight": 0.5186629295349121
+  },
+  "rupperarm": {
+    "match_type": "vertex",
+    "index": 13281,
+    "confidence_weight": 0.515491247177124
+  },
+  "relbm": {
+    "match_type": "vertex",
+    "index": 13527,
+    "confidence_weight": 0.5703054666519165
+  },
+  "rforearm": {
+    "match_type": "vertex",
+    "index": 13729,
+    "confidence_weight": 0.8420549035072327
+  },
+  "rwrithumbside": {
+    "match_type": "vertex",
+    "index": 14102,
+    "confidence_weight": 0.6789031028747559
+  },
+  "rwripinkieside": {
+    "match_type": "vertex",
+    "index": 14119,
+    "confidence_weight": 0.9271081686019897
+  },
+  "rfin": {
+    "match_type": "vertex",
+    "index": 14473,
+    "confidence_weight": 0.6931259632110596
+  },
+  "rasis": {
+    "match_type": "vertex",
+    "index": 7835,
+    "confidence_weight": 0.9976330995559692
+  },
+  "rpsis": {
+    "match_type": "vertex",
+    "index": 7063,
+    "confidence_weight": 0.5283424854278564
+  },
+  "rfrontthigh": {
+    "match_type": "vertex",
+    "index": 16489,
+    "confidence_weight": 0.9205825328826904
+  },
+  "rthigh": {
+    "match_type": "vertex",
+    "index": 7342,
+    "confidence_weight": 0.7945318222045898
+  },
+  "rknem": {
+    "match_type": "vertex",
+    "index": 16744,
+    "confidence_weight": 1.2844054698944092
+  },
+  "rankm": {
+    "match_type": "vertex",
+    "index": 17369,
+    "confidence_weight": 2.054136276245117
+  },
+  "RHeel": {
+    "match_type": "vertex",
+    "index": 17399,
+    "confidence_weight": 2.0385634899139404
+  },
+  "rfifthmetatarsal": {
+    "match_type": "vertex",
+    "index": 17840,
+    "confidence_weight": 2.090261697769165
+  },
+  "RBigToe": {
+    "match_type": "vertex",
+    "index": 18209,
+    "confidence_weight": 2.0628278255462646
+  },
+  "rcheek": {
+    "match_type": "vertex",
+    "index": 4165,
+    "confidence_weight": 0.6577380299568176
+  },
+  "rbreast": {
+    "match_type": "vertex",
+    "index": 7378,
+    "confidence_weight": 0.5332830548286438
+  },
+  "relbinner": {
+    "match_type": "vertex",
+    "index": 13607,
+    "confidence_weight": 0.5101732015609741
+  },
+  "rwaist": {
+    "match_type": "vertex",
+    "index": 7849,
+    "confidence_weight": 0.6193007826805115
+  },
+  "rthumb": {
+    "match_type": "vertex",
+    "index": 14333,
+    "confidence_weight": 0.6137621402740479
+  },
+  "rfrontinnerthigh": {
+    "match_type": "vertex",
+    "index": 16587,
+    "confidence_weight": 1.0057100057601929
+  },
+  "rinnerknee": {
+    "match_type": "vertex",
+    "index": 16790,
+    "confidence_weight": 1.0585765838623047
+  },
+  "rshin": {
+    "match_type": "vertex",
+    "index": 16987,
+    "confidence_weight": 1.6167904138565063
+  },
+  "rfirstmetatarsal": {
+    "match_type": "vertex",
+    "index": 17832,
+    "confidence_weight": 2.092742681503296
+  },
+  "rfourthtoe": {
+    "match_type": "vertex",
+    "index": 18218,
+    "confidence_weight": 2.0698659420013428
+  },
+  "rscapula": {
+    "match_type": "vertex",
+    "index": 7175,
+    "confidence_weight": 0.46904510259628296
+  },
+  "rbum": {
+    "match_type": "vertex",
+    "index": 7562,
+    "confidence_weight": 0.7204840779304504
+  },
+  "Head": {
+    "match_type": "kinematic_node",
+    "index": 124,
+    "confidence_weight": 0.2092742621898651
+  },
+  "mhip": {
+    "match_type": "kinematic_node",
+    "index": 34,
+    "confidence_weight": 2.0811054706573486
+  },
+  "CHip": {
+    "match_type": "kinematic_node",
+    "index": 35,
+    "confidence_weight": 0.8798581957817078
+  },
+  "Neck": {
+    "match_type": "sam3d_joint",
+    "index": 69,
+    "confidence_weight": 0.8538742065429688
+  },
+  "LAnkle": {
+    "match_type": "kinematic_node",
+    "index": 4,
+    "confidence_weight": 1.9762617349624634
+  },
+  "LElbow": {
+    "match_type": "sam3d_joint",
+    "index": 7,
+    "confidence_weight": 0.5757326483726501
+  },
+  "LHip": {
+    "match_type": "vertex",
+    "index": 6552,
+    "confidence_weight": 0.5747178196907043
+  },
+  "LHand": {
+    "match_type": "vertex",
+    "index": 9413,
+    "confidence_weight": 0.7998124957084656
+  },
+  "LKnee": {
+    "match_type": "kinematic_node",
+    "index": 3,
+    "confidence_weight": 1.328069806098938
+  },
+  "LShoulder": {
+    "match_type": "vertex",
+    "index": 6868,
+    "confidence_weight": 0.29468095302581787
+  },
+  "LWrist": {
+    "match_type": "kinematic_node",
+    "index": 77,
+    "confidence_weight": 0.8951925039291382
+  },
+  "LFoot": {
+    "match_type": "vertex",
+    "index": 13047,
+    "confidence_weight": 2.072495698928833
+  },
+  "RAnkle": {
+    "match_type": "kinematic_node",
+    "index": 20,
+    "confidence_weight": 1.9762617349624634
+  },
+  "RElbow": {
+    "match_type": "sam3d_joint",
+    "index": 8,
+    "confidence_weight": 0.5757326483726501
+  },
+  "RHip": {
+    "match_type": "vertex",
+    "index": 7675,
+    "confidence_weight": 0.5747178196907043
+  },
+  "RHand": {
+    "match_type": "vertex",
+    "index": 14570,
+    "confidence_weight": 0.7998124957084656
+  },
+  "RKnee": {
+    "match_type": "kinematic_node",
+    "index": 19,
+    "confidence_weight": 1.328069806098938
+  },
+  "RShoulder": {
+    "match_type": "vertex",
+    "index": 8011,
+    "confidence_weight": 0.29468095302581787
+  },
+  "RWrist": {
+    "match_type": "kinematic_node",
+    "index": 41,
+    "confidence_weight": 0.8951925039291382
+  },
+  "RFoot": {
+    "match_type": "vertex",
+    "index": 18212,
+    "confidence_weight": 2.072495698928833
+  }
+}
