@@ -1299,12 +1299,12 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = keypoints2d_with_conf
         
         elif method_name == "Sam3dBody_movi87":
-            from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
+            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d
 
-            mhr_dict = load_kp_vertex_mapping()
-            mesh_3d, keypoints_2d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "camera_t", "focal_length")
+            mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            vertices, keypoints_2d, kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "joints", "camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
-            keypoints_2d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_2d, camera_t, focal_length, (height,width))
+            keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
             has_nan = np.isnan(keypoints_2d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
@@ -1707,12 +1707,11 @@ class LiftingPerson(dj.Computed):
             results = {"keypoints_3d": keypoints_3d_with_conf[:, :, :], "keypoints_valid": keypoints_3d_with_conf[:, :, -1] > 0.5}
         
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
-            from .wrappers.sam3d_body import extract_movi87_kp_fromSAM, load_kp_vertex_mapping
+            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
 
-            mhr_dict = load_kp_vertex_mapping()
-            mesh_3d, keypoints_3d, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "camera_t", "focal_length")
-            height, width = (VideoInfo & key).fetch1("height", "width")
-            keypoints_3d_movi = extract_movi87_kp_fromSAM(mhr_dict, mesh_3d, keypoints_3d, camera_t, focal_length, (height,width))
+            mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            vertices, keypoints_3d, kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "joints")
+            keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
             keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
 
            # Check if any coordinate dimension is NaN for each keypoint in each frame
