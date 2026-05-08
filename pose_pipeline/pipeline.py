@@ -1030,6 +1030,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
         {"top_down_method": 34, "top_down_method_name": "Sam3dBody_with_hands2"},
         {"top_down_method": 35, "top_down_method_name": "Sam3dBody_movi87"},
+        {"top_down_method": 36, "top_down_method_name": "Sam3dBody_ideal"},
     ]
 
 
@@ -1302,6 +1303,21 @@ class TopDownPerson(dj.Computed):
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d
 
             mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            vertices, keypoints_2d, kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "joints", "camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
+
+            # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_2d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+
+            keypoints_2d_movi_with_conf = np.concatenate([keypoints_2d_movi, conf], axis=-1)
+            key["keypoints"] = keypoints_2d_movi_with_conf
+
+        elif method_name == "Sam3dBody_ideal":
+            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d
+
+            mapping = load_mhr_mapping("ideal_sam_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
             vertices, keypoints_2d, kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "joints", "camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
             keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
