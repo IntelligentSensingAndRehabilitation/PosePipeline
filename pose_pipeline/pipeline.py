@@ -1528,6 +1528,7 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
         {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
         {"lifting_method": 35, "lifting_method_name": "Sam3dBody_movi87"},
+        {"lifting_method": 36, "lifting_method_name": "Sam3dBody_ideal"}
     ]
 
 
@@ -1731,6 +1732,21 @@ class LiftingPerson(dj.Computed):
             keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
 
            # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_3d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+            
+            keypoints_3d_movi_with_conf = np.concatenate([keypoints_3d_movi, conf], axis=-1)
+            results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
+
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_ideal":
+            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
+
+            mapping = load_mhr_mapping("ideal_sam_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            vertices, keypoints_3d, kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "joints")
+            keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
+            keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
+
+            # Check if any coordinate dimension is NaN for each keypoint in each frame
             has_nan = np.isnan(keypoints_3d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
             conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
             
