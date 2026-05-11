@@ -1317,7 +1317,7 @@ class TopDownPerson(dj.Computed):
         elif method_name == "Sam3dBody_ideal":
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d
 
-            mapping = load_mhr_mapping("ideal_sam_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            mapping = load_mhr_mapping("ideal_biomech_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
             vertices, keypoints_2d, kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "joints", "camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
             keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
@@ -1741,7 +1741,7 @@ class LiftingPerson(dj.Computed):
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_ideal":
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
 
-            mapping = load_mhr_mapping("ideal_sam_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            mapping = load_mhr_mapping("ideal_biomech_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
             vertices, keypoints_3d, kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "joints")
             keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
             keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
