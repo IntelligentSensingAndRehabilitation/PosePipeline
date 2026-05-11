@@ -1031,6 +1031,7 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 34, "top_down_method_name": "Sam3dBody_with_hands2"},
         {"top_down_method": 35, "top_down_method_name": "Sam3dBody_movi87"},
         {"top_down_method": 36, "top_down_method_name": "Sam3dBody_ideal"},
+        {"top_down_method": 37, "top_down_method_name": "Sam3dBody_kinematic_nodes_127"},
     ]
 
 
@@ -1329,6 +1330,28 @@ class TopDownPerson(dj.Computed):
             keypoints_2d_movi_with_conf = np.concatenate([keypoints_2d_movi, conf], axis=-1)
             key["keypoints"] = keypoints_2d_movi_with_conf
 
+        elif method_name == "Sam3dBody_kinematic_nodes_127":
+            from sam3d_body_eqx.mhr.mhr_utils import project_to_2d_mhr_batched
+
+            kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("joints", "camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            T, K, _ = kinematic_nodes.shape
+
+            # Reshape to (T*K, 3), project, reshape back to (T, K, 2)
+            keypoints_2d_kinematic = project_to_2d_mhr_batched(
+                kinematic_nodes.reshape(T * K, 3),
+                np.repeat(camera_t, K, axis=0),        # (T*K, 3)
+                np.repeat(focal_length, K, axis=0),    # (T*K,)
+                (height, width)
+            ).reshape(T, K, 2)
+
+            # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_2d_kinematic).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+
+            keypoints_2d_kinematic_with_conf = np.concatenate([keypoints_2d_kinematic, conf], axis=-1)
+            key["keypoints"] = keypoints_2d_kinematic_with_conf
+
         else:
             raise Exception("Method not implemented")
 
@@ -1528,7 +1551,8 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
         {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
         {"lifting_method": 35, "lifting_method_name": "Sam3dBody_movi87"},
-        {"lifting_method": 36, "lifting_method_name": "Sam3dBody_ideal"}
+        {"lifting_method": 36, "lifting_method_name": "Sam3dBody_ideal"},
+        {"lifting_method": 37, "lifting_method_name": "Sam3dBody_kinematic_nodes_127"},
     ]
 
 
@@ -1752,6 +1776,19 @@ class LiftingPerson(dj.Computed):
             
             keypoints_3d_movi_with_conf = np.concatenate([keypoints_3d_movi, conf], axis=-1)
             results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
+        
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_kinematic_nodes_127":
+
+            kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("joints")
+            keypoints_3d_kinematic = kinematic_nodes
+            keypoints_3d_kinematic = keypoints_3d_kinematic * 1000  # convert to mm for consistency with other methods
+
+           # Check if any coordinate dimension is NaN for each keypoint in each frame
+            has_nan = np.isnan(keypoints_3d_kinematic).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
+            
+            keypoints_3d_kinematic_with_conf = np.concatenate([keypoints_3d_kinematic, conf], axis=-1)
+            results = {"keypoints_3d": keypoints_3d_kinematic_with_conf[:, :, :], "keypoints_valid": keypoints_3d_kinematic_with_conf[:, :, -1] > 0.5}
 
         else:
             raise Exception(f"Method not implemented {key}")
