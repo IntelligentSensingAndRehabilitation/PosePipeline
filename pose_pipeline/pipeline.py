@@ -1410,6 +1410,11 @@ class TopDownPerson(dj.Computed):
             from .wrappers.sam3d_body import sam_vertex_movi_names
 
             return sam_vertex_movi_names
+        
+        elif method == "Sam3dBody_kinematic_nodes_127":
+            from .wrappers.sam3d_body import sam_kinematic_node_names
+
+            return sam_kinematic_node_names
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
