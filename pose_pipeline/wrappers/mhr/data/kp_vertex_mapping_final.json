@@ -770,7 +770,7 @@
     }
   },
   "Neck": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 69,
     "mean_dist_px": 6.261235909081534,
     "confidence_weight": 0.5346603513900559,
@@ -781,7 +781,7 @@
     }
   },
   "LAnkle": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 13,
     "mean_dist_px": 11.512833898295577,
     "confidence_weight": 0.3162306616225916,
@@ -792,7 +792,7 @@
     }
   },
   "LElbow": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 65,
     "mean_dist_px": 7.2694803294068615,
     "confidence_weight": 0.4833820071098876,
@@ -825,7 +825,7 @@
     }
   },
   "LKnee": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 11,
     "mean_dist_px": 7.868283414428429,
     "confidence_weight": 0.4552865211334239,
@@ -847,7 +847,7 @@
     }
   },
   "LWrist": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 62,
     "mean_dist_px": 7.57514135062542,
     "confidence_weight": 0.46883042875939285,
@@ -880,7 +880,7 @@
     }
   },
   "RElbow": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 8,
     "mean_dist_px": 8.21078550757593,
     "confidence_weight": 0.4399568826901388,
@@ -913,7 +913,7 @@
     }
   },
   "RKnee": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 12,
     "mean_dist_px": 6.92788697424435,
     "confidence_weight": 0.5001792736991342,
@@ -935,7 +935,7 @@
     }
   },
   "RWrist": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 41,
     "mean_dist_px": 6.831050958530095,
     "confidence_weight": 0.5050463378219571,

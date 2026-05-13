@@ -350,7 +350,7 @@
     "confidence_weight": 0.8798581957817078
   },
   "Neck": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 69,
     "confidence_weight": 0.8538742065429688
   },
@@ -360,7 +360,7 @@
     "confidence_weight": 1.9762617349624634
   },
   "LElbow": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 7,
     "confidence_weight": 0.5757326483726501
   },
@@ -400,7 +400,7 @@
     "confidence_weight": 1.9762617349624634
   },
   "RElbow": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 8,
     "confidence_weight": 0.5757326483726501
   },

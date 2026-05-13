@@ -310,12 +310,12 @@
     "confidence_weight": 0.38580724596977234
   },
   "Neck": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 69,
     "confidence_weight": 1.3225737810134888
   },
   "LAnkle": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 13,
     "confidence_weight": 0.8740994930267334
   },
@@ -325,7 +325,7 @@
     "confidence_weight": 0.38635700941085815
   },
   "LKnee": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 11,
     "confidence_weight": 1.5015349388122559
   },
@@ -350,7 +350,7 @@
     "confidence_weight": 0.38635700941085815
   },
   "RKnee": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 12,
     "confidence_weight": 1.5015349388122559
   },
@@ -575,27 +575,27 @@
     "confidence_weight": 1.3482915163040161
   },
   "nose": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 0,
     "confidence_weight": 0.7006147503852844
   },
   "leye": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 1,
     "confidence_weight": 0.8312665224075317
   },
   "reye": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 2,
     "confidence_weight": 0.8312665224075317
   },
   "lear": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 3,
     "confidence_weight": 0.9691749811172485
   },
   "rear": {
-    "match_type": "sam3d_joint",
+    "match_type": "sam3d_kp",
     "index": 4,
     "confidence_weight": 0.9691749811172485
   }
