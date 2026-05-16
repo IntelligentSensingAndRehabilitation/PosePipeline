@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 
 
 class DummyQuery:
-    """Test double for a DataJoint relation supporting len() and fetch1()."""
+    """Test double for a DataJoint relation used as direct restrictions and fetch targets."""
 
     def __init__(self, path, count=1):
         self.path = path
