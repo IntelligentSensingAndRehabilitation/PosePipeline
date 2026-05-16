@@ -18,15 +18,18 @@ except ModuleNotFoundError:
 class DummyQuery:
     """Test double for a DataJoint relation used as direct restrictions and fetch targets."""
 
-    def __init__(self, path=None, count=1, field_paths=None):
+    def __init__(self, path=None, count=1, field_paths=None, fetch_exc=None):
         self.path = path
         self.count = count
         self.field_paths = field_paths or {}
+        self.fetch_exc = fetch_exc
 
     def __len__(self):
         return self.count
 
     def fetch1(self, field):
+        if self.fetch_exc is not None:
+            raise self.fetch_exc
         if field in self.field_paths:
             return str(self.field_paths[field])
         if field == "video" and self.path is not None:
@@ -161,3 +164,22 @@ def test_video_fetcher_fetch_video_with_custom_attachment_field(tmp_path):
         assert fetched == output_video
 
     assert not output_video.exists()
+
+
+def test_video_fetcher_fetch_videos_cleanup_when_later_fetch_raises(tmp_path):
+    first_video = tmp_path / "video1.mp4"
+    first_video.write_text("data")
+    key_1 = {"video_id": 1}
+    key_2 = {"video_id": 2}
+    table = DummyVideoTable(
+        {
+            repr(key_1): DummyQuery(first_video, count=1),
+            repr(key_2): DummyQuery(count=1, fetch_exc=RuntimeError("fetch failed")),
+        }
+    )
+
+    with pytest.raises(RuntimeError, match="fetch failed"):
+        with VideoFetcher(video_table=table) as fetcher:
+            fetcher.fetch_videos([key_1, key_2])
+
+    assert not first_video.exists()
