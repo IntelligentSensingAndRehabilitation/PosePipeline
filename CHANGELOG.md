@@ -8,6 +8,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Preparing PosePipeline for PyPI
 
 ### Added
+- `VideoFetcher` context manager and `cleanup_video_files` helper for cleanup of fetched local video attachments.
 - VitPose-H TopDown method [[#38]](https://github.com/IntelligentSensingAndRehabilitation/PosePipeline/pull/38)
 - MoviTopDown HandBbox method [[#40]](https://github.com/IntelligentSensingAndRehabilitation/PosePipeline/pull/40)
 - Updated README and installation instructions [[#42]](https://github.com/IntelligentSensingAndRehabilitation/PosePipeline/pull/42)
@@ -24,4 +25,3 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - PosePipeline is now 'pip installable', with external dependencies automatically downloaded.
 - Transition to uv as package manager [[#33]](https://github.com/IntelligentSensingAndRehabilitation/PosePipeline/pull/33)
 - Breaking change with update to MMCV. [[#36]](https://github.com/IntelligentSensingAndRehabilitation/PosePipeline/pull/36)
-

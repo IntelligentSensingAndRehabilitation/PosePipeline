@@ -1,22 +1,14 @@
-import logging
 from collections.abc import Iterable
 from os import PathLike
 from pathlib import Path
 from typing import Any
 
 
-logger = logging.getLogger(__name__)
-
-
 def cleanup_video_files(paths: Iterable[str | PathLike[str] | Path]) -> None:
     """Remove local video files fetched from DataJoint attachments."""
     for path in paths:
         file_path = Path(path)
-        try:
-            if file_path.exists() and file_path.is_file():
-                file_path.unlink()
-        except Exception as exc:
-            logger.warning(f"Failed to clean up video file {file_path}: {exc}")
+        file_path.unlink()
 
 
 class VideoFetcher:
@@ -37,8 +29,8 @@ class VideoFetcher:
         cleanup_video_files(self._tracked_videos)
         return False
 
-    def fetch_video(self, restriction: Any) -> Path:
-        """Fetch one video path from a key dict or a restricted Video relation."""
+    def fetch_video(self, restriction: Any, attachment_field: str = "video") -> Path:
+        """Fetch one attachment path from a key dict or a restricted Video relation."""
         video_query = self.video_table & restriction
 
         if len(video_query) != 1:
@@ -47,10 +39,10 @@ class VideoFetcher:
                 f"for restriction: {restriction}"
             )
 
-        video_path = Path(video_query.fetch1("video"))
+        video_path = Path(video_query.fetch1(attachment_field))
         self._tracked_videos.append(video_path)
         return video_path
 
-    def fetch_videos(self, restrictions: Iterable[Any]) -> list[Path]:
+    def fetch_videos(self, restrictions: Iterable[Any], attachment_field: str = "video") -> list[Path]:
         """Fetch multiple videos, tracking all returned local paths for cleanup."""
-        return [self.fetch_video(restriction) for restriction in restrictions]
+        return [self.fetch_video(restriction, attachment_field=attachment_field) for restriction in restrictions]

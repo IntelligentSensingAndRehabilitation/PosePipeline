@@ -18,17 +18,20 @@ except ModuleNotFoundError:
 class DummyQuery:
     """Test double for a DataJoint relation used as direct restrictions and fetch targets."""
 
-    def __init__(self, path, count=1):
+    def __init__(self, path=None, count=1, field_paths=None):
         self.path = path
         self.count = count
+        self.field_paths = field_paths or {}
 
     def __len__(self):
         return self.count
 
     def fetch1(self, field):
-        if field != "video":
-            raise ValueError("Unexpected field")
-        return str(self.path)
+        if field in self.field_paths:
+            return str(self.field_paths[field])
+        if field == "video" and self.path is not None:
+            return str(self.path)
+        raise ValueError("Unexpected field")
 
 
 class DummyVideoTable:
@@ -122,3 +125,39 @@ def test_video_fetcher_cleans_up_when_exception_is_raised(tmp_path):
             raise RuntimeError("boom")
 
     assert not video_file.exists()
+
+
+def test_video_fetcher_fetch_videos_partial_failure_cleans_previous_file(tmp_path):
+    first_video = tmp_path / "video1.mp4"
+    first_video.write_text("data")
+    key_1 = {"video_id": 1}
+    key_2 = {"video_id": 2}
+    table = DummyVideoTable(
+        {
+            repr(key_1): DummyQuery(first_video, count=1),
+            repr(key_2): DummyQuery(count=0),
+        }
+    )
+
+    with pytest.raises(ValueError, match="must match exactly 1 video"):
+        with VideoFetcher(video_table=table) as fetcher:
+            fetcher.fetch_videos([key_1, key_2])
+
+    assert not first_video.exists()
+
+
+def test_video_fetcher_fetch_video_with_custom_attachment_field(tmp_path):
+    output_video = tmp_path / "output_video.mp4"
+    output_video.write_text("data")
+    restriction = {"video_id": 1}
+    table = DummyVideoTable(
+        {
+            repr(restriction): DummyQuery(field_paths={"output_video": output_video}, count=1),
+        }
+    )
+
+    with VideoFetcher(video_table=table) as fetcher:
+        fetched = fetcher.fetch_video(restriction, attachment_field="output_video")
+        assert fetched == output_video
+
+    assert not output_video.exists()
