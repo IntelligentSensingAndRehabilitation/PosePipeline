@@ -36,10 +36,7 @@ class VideoFetcher:
 
     def fetch_video(self, restriction):
         """Fetch one video path from a key dict or a restricted Video relation."""
-        if hasattr(restriction, "fetch1") and hasattr(restriction, "__len__"):
-            video_query = restriction
-        else:
-            video_query = self.video_table & restriction
+        video_query = self.video_table & restriction
 
         if len(video_query) != 1:
             raise ValueError(

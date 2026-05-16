@@ -31,6 +31,8 @@ class DummyVideoTable:
         self.result_by_restriction = result_by_restriction
 
     def __and__(self, restriction):
+        if isinstance(restriction, DummyQuery):
+            return restriction
         return self.result_by_restriction[repr(restriction)]
 
 
