@@ -33,7 +33,7 @@ class VideoFetcher:
     def __enter__(self) -> "VideoFetcher":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         cleanup_video_files(self._tracked_videos)
         return False
 
