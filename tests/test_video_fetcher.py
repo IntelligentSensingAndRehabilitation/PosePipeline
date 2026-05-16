@@ -16,6 +16,8 @@ except ModuleNotFoundError:
 
 
 class DummyQuery:
+    """Test double for a DataJoint relation supporting len() and fetch1()."""
+
     def __init__(self, path, count=1):
         self.path = path
         self.count = count
@@ -30,6 +32,8 @@ class DummyQuery:
 
 
 class DummyVideoTable:
+    """Test double for the DataJoint Video table restriction operator."""
+
     def __init__(self, result_by_restriction):
         self.result_by_restriction = result_by_restriction
 
