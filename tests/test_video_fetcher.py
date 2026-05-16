@@ -3,13 +3,16 @@ import importlib.util
 
 import pytest
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "pose_pipeline" / "utils" / "video_fetcher.py"
-SPEC = importlib.util.spec_from_file_location("video_fetcher", MODULE_PATH)
-video_fetcher = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(video_fetcher)
+try:
+    from pose_pipeline.utils.video_fetcher import VideoFetcher, cleanup_video_files
+except ModuleNotFoundError:
+    MODULE_PATH = Path(__file__).resolve().parents[1] / "pose_pipeline" / "utils" / "video_fetcher.py"
+    SPEC = importlib.util.spec_from_file_location("video_fetcher", MODULE_PATH)
+    video_fetcher = importlib.util.module_from_spec(SPEC)
+    SPEC.loader.exec_module(video_fetcher)
 
-VideoFetcher = video_fetcher.VideoFetcher
-cleanup_video_files = video_fetcher.cleanup_video_files
+    VideoFetcher = video_fetcher.VideoFetcher
+    cleanup_video_files = video_fetcher.cleanup_video_files
 
 
 class DummyQuery:
