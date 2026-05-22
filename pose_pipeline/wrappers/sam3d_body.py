@@ -414,7 +414,6 @@ def process_sam3d_pytorch(
         return out
 
     final = {k: stack(v) for k, v in results.items()}
-    final["mesh_faces"] = estimator.faces
     return final
 
 def process_sam3d_jax(
@@ -480,7 +479,6 @@ def process_sam3d_jax(
 
     # Consolidate frames using the JAX-helper stack utility
     final = stack_sequence_results(results_list)
-    final["mesh_faces"] = np.asarray(estimator.model.head_pose.mhr.faces)
     return final
 
 def process_sam3d_body(
@@ -582,14 +580,17 @@ def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, floa
     Returns:
         A function: overlay(image, frame_index) -> visualized_image.
     """
+    from sam3d_body_eqx.inference import SAM3DBodyEstimator
     from sam3d_body_eqx.visualization.mesh import render_mesh
     from pose_pipeline import SAM3DBody
 
     sam3d_entry = SAM3DBody & key
-    data = sam3d_entry.fetch1("mesh_faces", "camera_t", "focal_length", "frame_valid")
+    data = sam3d_entry.fetch1("camera_t", "focal_length", "frame_valid")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=False)
     vertices = geom["vertices"]
-    faces, camera_t, focal_length = data["mesh_faces"], data["camera_t"], data["focal_length"]
+    estimator = SAM3DBodyEstimator.from_pretrained()
+    faces = np.asarray(estimator.model.head_pose.mhr.faces)
+    camera_t, focal_length = data["camera_t"], data["focal_length"]
     valid = data.get("frame_valid", np.ones(len(vertices), dtype=bool))
 
     def overlay(image, idx):

@@ -2692,7 +2692,6 @@ class SAM3DBody(dj.Computed):
     shape_params       : longblob   # [N_frames, 45] MHR shape PCA coefficients
     scale_params       : longblob   # [N_frames, 28] MHR scale PCA coefficients
     global_rot         : longblob   # [N_frames, 3] global rotation (ZYX Euler)
-    mesh_faces         : longblob   # Mesh face indices (static topology, shared across frames)
     frame_valid        : longblob   # [N_frames] boolean mask of valid frames
     """
 
