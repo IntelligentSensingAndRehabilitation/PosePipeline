@@ -1291,7 +1291,17 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = sapiens_top_down_person(key, variant=variant)
 
         elif method_name == "Sam3dBody_with_hands2":
-            keypoints2d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_2d")
+            from sam3d_body_eqx.mhr.mhr_utils import project_to_2d_mhr_batched
+
+            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
+            geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)
+            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+            height, width = (VideoInfo & key).fetch1("height", "width")
+            kp3d = geom["keypoints_3d"]  # (N, K, 3)
+            keypoints2d = np.stack([
+                project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
+                for k in range(kp3d.shape[1])
+            ], axis=1)  # (N, K, 2)
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
             has_nan = np.isnan(keypoints2d).any(axis=-1)  # shape: (num_frames, num_keypoints)
@@ -1301,11 +1311,19 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = keypoints2d_with_conf
         
         elif method_name == "Sam3dBody_movi87":
-            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d
+            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d, project_to_2d_mhr_batched
 
             mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
-            vertices, keypoints_2d, kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "joints", "camera_t", "focal_length")
+            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
+            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
+            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
+            kp3d = geom["keypoints_3d"]  # (N, K, 3)
+            keypoints_2d = np.stack([
+                project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
+                for k in range(kp3d.shape[1])
+            ], axis=1)  # (N, K, 2)
             keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
@@ -1316,11 +1334,19 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = keypoints_2d_movi_with_conf
 
         elif method_name == "Sam3dBody_ideal":
-            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d
+            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d, project_to_2d_mhr_batched
 
             mapping = load_mhr_mapping("ideal_biomech_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
-            vertices, keypoints_2d, kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_2d", "joints", "camera_t", "focal_length")
+            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
+            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
+            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
+            kp3d = geom["keypoints_3d"]  # (N, K, 3)
+            keypoints_2d = np.stack([
+                project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
+                for k in range(kp3d.shape[1])
+            ], axis=1)  # (N, K, 2)
             keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
@@ -1333,17 +1359,15 @@ class TopDownPerson(dj.Computed):
         elif method_name == "Sam3dBody_kinematic_nodes_127":
             from sam3d_body_eqx.mhr.mhr_utils import project_to_2d_mhr_batched
 
-            kinematic_nodes, camera_t, focal_length = (SAM3DBody & key & "sam3d_method=3").fetch1("joints", "camera_t", "focal_length")
+            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
+            geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)
+            kinematic_nodes = geom["joints"]  # (T, K, 3)
+            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
             height, width = (VideoInfo & key).fetch1("height", "width")
-            T, K, _ = kinematic_nodes.shape
-
-            # Reshape to (T*K, 3), project, reshape back to (T, K, 2)
-            keypoints_2d_kinematic = project_to_2d_mhr_batched(
-                kinematic_nodes.reshape(T * K, 3),
-                np.repeat(camera_t, K, axis=0),        # (T*K, 3)
-                np.repeat(focal_length, K, axis=0),    # (T*K,)
-                (height, width)
-            ).reshape(T, K, 2)
+            keypoints_2d_kinematic = np.stack([
+                project_to_2d_mhr_batched(kinematic_nodes[:, k, :], camera_t, focal_length, (height, width))
+                for k in range(kinematic_nodes.shape[1])
+            ], axis=1)  # (T, K, 2)
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
             has_nan = np.isnan(keypoints_2d_kinematic).any(axis=-1)  # shape: (num_frames, num_keypoints)
@@ -1742,7 +1766,7 @@ class LiftingPerson(dj.Computed):
 
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
-            keypoints_3d = (SAM3DBody & key & "sam3d_method=3").fetch1("keypoints_3d")
+            keypoints_3d = (SAM3DBody & key & "sam3d_method=3").fetch_geometry(return_vertices=False, return_joints=False)["keypoints_3d"]
             keypoints_3d = keypoints_3d * 1000  # convert to mm for consistency with other methods
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
@@ -1756,14 +1780,17 @@ class LiftingPerson(dj.Computed):
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
 
             mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
-            vertices, keypoints_3d, kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "joints")
+            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
+            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
+            keypoints_3d = geom["keypoints_3d"]
             keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
             keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
 
            # Check if any coordinate dimension is NaN for each keypoint in each frame
             has_nan = np.isnan(keypoints_3d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
             conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-            
+
             keypoints_3d_movi_with_conf = np.concatenate([keypoints_3d_movi, conf], axis=-1)
             results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
 
@@ -1771,7 +1798,10 @@ class LiftingPerson(dj.Computed):
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
 
             mapping = load_mhr_mapping("ideal_biomech_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
-            vertices, keypoints_3d, kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("vertices", "keypoints_3d", "joints")
+            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
+            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
+            keypoints_3d = geom["keypoints_3d"]
             keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
             keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
 
@@ -1784,7 +1814,8 @@ class LiftingPerson(dj.Computed):
         
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_kinematic_nodes_127":
 
-            kinematic_nodes = (SAM3DBody & key & "sam3d_method=3").fetch1("joints")
+            geom = (SAM3DBody & key & "sam3d_method=3").fetch_geometry(return_vertices=False, return_joints=True)
+            kinematic_nodes = geom["joints"]
             keypoints_3d_kinematic = kinematic_nodes
             keypoints_3d_kinematic = keypoints_3d_kinematic * 1000  # convert to mm for consistency with other methods
 
@@ -2654,17 +2685,14 @@ class SAM3DBody(dj.Computed):
     definition = """
     -> SAM3DBodyMethod
     ---
-    vertices           : longblob   # [N_frames, N_vertices, 3] MHR mesh vertices
-    keypoints_3d       : longblob   # [N_frames, 70, 3] 3D joint positions
-    joints             : longblob   # [N_frames, 127, 3] MHR rig kinematic tree joints
-    keypoints_2d       : longblob   # [N_frames, 70, 2] 2D projected keypoints
     camera_t           : longblob   # [N_frames, 3] camera translations
     focal_length       : longblob   # [N_frames] focal lengths
-    body_pose_params   : longblob   # MHR body pose parameters
-    hand_pose_params   : longblob   # MHR hand pose parameters
-    shape_params       : longblob   # MHR shape parameters
-    global_rot         : longblob   # Global rotation parameters
-    mesh_faces         : longblob   # Mesh face indices (shared across frames)
+    body_pose_params   : longblob   # [N_frames, 133] MHR body pose Euler angles (XYZ)
+    hand_pose_params   : longblob   # [N_frames, 108] MHR hand pose (54 left + 54 right, continuous)
+    shape_params       : longblob   # [N_frames, 45] MHR shape PCA coefficients
+    scale_params       : longblob   # [N_frames, 28] MHR scale PCA coefficients
+    global_rot         : longblob   # [N_frames, 3] global rotation (ZYX Euler)
+    mesh_faces         : longblob   # Mesh face indices (static topology, shared across frames)
     frame_valid        : longblob   # [N_frames] boolean mask of valid frames
     """
 
@@ -2689,6 +2717,27 @@ class SAM3DBody(dj.Computed):
         Runs inside a fresh transaction after data validation.
         """
         self.insert1(res, skip_duplicates=True)
+
+    def fetch_geometry(self, return_vertices=True, return_joints=True):
+        """Reconstruct MHR mesh vertices and/or kinematic joints from stored minimal parameters.
+
+        Requires sam3d_body_eqx to be installed. Vertices are returned in body/root space
+        (same space as the originally stored values); apply camera_t separately for projection.
+        """
+        from .wrappers.sam3d_body import compute_sam3d_geometry
+        params = self.fetch1(
+            "body_pose_params", "hand_pose_params", "shape_params",
+            "scale_params", "global_rot"
+        )
+        return compute_sam3d_geometry(
+            body_pose_params=params["body_pose_params"],
+            shape_params=params["shape_params"],
+            scale_params=params["scale_params"],
+            hand_pose_params=params["hand_pose_params"],
+            global_rot=params["global_rot"],
+            return_vertices=return_vertices,
+            return_joints=return_joints,
+        )
 
 
 @schema
