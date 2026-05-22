@@ -541,8 +541,9 @@ def compute_sam3d_geometry(
 ) -> Dict[str, np.ndarray]:
     """Reconstruct MHR mesh vertices and kinematic joints from stored minimal parameters.
 
-    Requires sam3d_body_eqx to be installed. Vertices/joints are returned in body/root
-    space (no global translation). Apply camera_t separately for 2D projection.
+    Delegates to SAM3DBodyEstimator.compute_geometry() (requires sam3d_body_eqx).
+    Vertices/joints are returned in body/root space. Apply camera_t separately for
+    2D projection.
 
     Args:
         body_pose_params:  (N, 133) body pose Euler angles (XYZ).
@@ -550,45 +551,24 @@ def compute_sam3d_geometry(
         scale_params:      (N, 28) scale PCA coefficients.
         hand_pose_params:  (N, 108) hand pose: columns 0:54 left, 54:108 right (continuous).
         global_rot:        (N, 3) global rotation (ZYX Euler).
-        return_vertices:   Whether to compute mesh vertices (N, 18439, 3).
-        return_joints:     Whether to compute kinematic tree joints (N, 127, 3).
+        return_vertices:   Whether to include mesh vertices (N, 18439, 3) in output.
+        return_joints:     Whether to include kinematic tree joints (N, 127, 3) in output.
 
     Returns:
         dict with keys: 'keypoints_3d' always; 'vertices' and/or 'joints' when requested.
     """
-    import jax
-    import jax.numpy as jnp
     from sam3d_body_eqx.inference import SAM3DBodyEstimator
 
     estimator = SAM3DBodyEstimator.from_pretrained()
-    mhr = estimator.model.head_pose.mhr
-
-    def _forward(bp, sp, sc, hp, gr):
-        return mhr(
-            body_pose=bp,
-            shape_params=sp,
-            scale_params=sc,
-            hand_pose_left=hp[:54],
-            hand_pose_right=hp[54:],
-            global_orient=gr,
-            return_vertices=return_vertices,
-            return_joint_coords=return_joints,
-        )
-
-    batched = jax.vmap(_forward)(
-        jnp.asarray(body_pose_params),
-        jnp.asarray(shape_params),
-        jnp.asarray(scale_params),
-        jnp.asarray(hand_pose_params),
-        jnp.asarray(global_rot),
+    return estimator.compute_geometry(
+        body_pose_params=body_pose_params,
+        shape_params=shape_params,
+        scale_params=scale_params,
+        hand_pose_params=hand_pose_params,
+        global_rot=global_rot,
+        return_vertices=return_vertices,
+        return_joints=return_joints,
     )
-
-    out: Dict[str, np.ndarray] = {"keypoints_3d": np.asarray(batched["joints_3d"])}
-    if return_vertices:
-        out["vertices"] = np.asarray(batched["vertices"])
-    if return_joints:
-        out["joints"] = np.asarray(batched["joint_coords"])
-    return out
 
 
 def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, float] = (0.65, 0.74, 0.86)):
