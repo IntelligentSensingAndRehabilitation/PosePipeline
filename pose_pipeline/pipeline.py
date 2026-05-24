@@ -1347,14 +1347,14 @@ class TopDownPerson(dj.Computed):
                 project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
                 for k in range(kp3d.shape[1])
             ], axis=1)  # (N, K, 2)
-            keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
+            keypoints_2d_ideal = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_2d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            has_nan = np.isnan(keypoints_2d_ideal).any(axis=-1)  # shape: (num_frames, num_keypoints)
             conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
 
-            keypoints_2d_movi_with_conf = np.concatenate([keypoints_2d_movi, conf], axis=-1)
-            key["keypoints"] = keypoints_2d_movi_with_conf
+            keypoints_2d_ideal_with_conf = np.concatenate([keypoints_2d_ideal, conf], axis=-1)
+            key["keypoints"] = keypoints_2d_ideal_with_conf 
 
         elif method_name == "Sam3dBody_kinematic_nodes_127":
             from sam3d_body_eqx.mhr.mhr_utils import project_to_2d_mhr_batched
@@ -1802,15 +1802,15 @@ class LiftingPerson(dj.Computed):
             geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
             vertices, kinematic_nodes = geom["vertices"], geom["joints"]
             keypoints_3d = geom["keypoints_3d"]
-            keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
-            keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
+            keypoints_3d_ideal = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
+            keypoints_3d_ideal = keypoints_3d_ideal * 1000  # convert to mm for consistency with other methods
 
             # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_3d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
+            has_nan = np.isnan(keypoints_3d_ideal).any(axis=-1)  # shape: (num_frames, num_keypoints)
             conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
             
-            keypoints_3d_movi_with_conf = np.concatenate([keypoints_3d_movi, conf], axis=-1)
-            results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
+            keypoints_3d_ideal_with_conf = np.concatenate([keypoints_3d_ideal, conf], axis=-1)
+            results = {"keypoints_3d": keypoints_3d_ideal_with_conf[:, :, :], "keypoints_valid": keypoints_3d_ideal_with_conf[:, :, -1] > 0.5}
         
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_kinematic_nodes_127":
 
