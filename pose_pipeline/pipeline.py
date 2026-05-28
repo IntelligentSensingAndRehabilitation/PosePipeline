@@ -2717,23 +2717,38 @@ class SAM3DBody(dj.Computed):
         """
         self.insert1(res, skip_duplicates=True)
 
-    def fetch_geometry(self, return_vertices=True, return_joints=True):
+    def fetch_geometry(self, return_vertices=True, return_joints=True, return_visibility=False, depth_tolerance=0.05):
         """Reconstruct MHR mesh vertices and/or kinematic joints from stored minimal parameters.
 
         Requires sam3d_body_eqx to be installed. Vertices are returned in body/root space
         (same space as the originally stored values); apply camera_t separately for projection.
+
+        When return_visibility=True, self-occlusion masks are also returned for all requested
+        outputs. Image size is fetched automatically from VideoInfo. Requires pyrender + trimesh.
         """
         from .wrappers.sam3d_body import compute_sam3d_geometry
-        params = self.fetch1(
-            "body_pose_params", "hand_pose_params", "shape_params",
-            "scale_params", "global_rot"
-        )
+        fields = ["body_pose_params", "hand_pose_params", "shape_params", "scale_params", "global_rot"]
+        if return_visibility:
+            fields += ["camera_t", "focal_length"]
+        params = self.fetch1(*fields)
+
+        camera_t = params["camera_t"] if return_visibility else None
+        focal_length = params["focal_length"] if return_visibility else None
+        image_size = None
+        if return_visibility:
+            height, width = (VideoInfo & self).fetch1("height", "width")
+            image_size = (height, width)
+
         return compute_sam3d_geometry(
             body_pose_params=params["body_pose_params"],
             shape_params=params["shape_params"],
             scale_params=params["scale_params"],
             hand_pose_params=params["hand_pose_params"],
             global_rot=params["global_rot"],
+            camera_t=camera_t,
+            focal_length=focal_length,
+            image_size=image_size,
+            depth_tolerance=depth_tolerance,
             return_vertices=return_vertices,
             return_joints=return_joints,
         )

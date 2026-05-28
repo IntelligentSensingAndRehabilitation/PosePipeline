@@ -534,6 +534,10 @@ def compute_sam3d_geometry(
     scale_params: np.ndarray,
     hand_pose_params: np.ndarray,
     global_rot: np.ndarray,
+    camera_t: Optional[np.ndarray] = None,
+    focal_length: Optional[np.ndarray] = None,
+    image_size: Optional[Tuple[int, int]] = None,
+    depth_tolerance: float = 0.05,
     return_vertices: bool = True,
     return_joints: bool = True,
 ) -> Dict[str, np.ndarray]:
@@ -543,17 +547,26 @@ def compute_sam3d_geometry(
     Vertices/joints are returned in body/root space. Apply camera_t separately for
     2D projection.
 
+    When camera_t, focal_length, and image_size are provided, self-occlusion
+    visibility masks are also returned (requires pyrender + trimesh).
+
     Args:
         body_pose_params:  (N, 133) body pose Euler angles (XYZ).
         shape_params:      (N, 45) shape PCA coefficients.
         scale_params:      (N, 28) scale PCA coefficients.
         hand_pose_params:  (N, 108) hand pose: columns 0:54 left, 54:108 right (continuous).
         global_rot:        (N, 3) global rotation (ZYX Euler).
+        camera_t:          (N, 3) camera translations — required for visibility.
+        focal_length:      (N,) focal lengths in pixels — required for visibility.
+        image_size:        (H, W) image dimensions — required for visibility.
+        depth_tolerance:   Occlusion tolerance in metres (default 5 cm).
         return_vertices:   Whether to include mesh vertices (N, 18439, 3) in output.
         return_joints:     Whether to include kinematic tree joints (N, 127, 3) in output.
 
     Returns:
-        dict with keys: 'keypoints_3d' always; 'vertices' and/or 'joints' when requested.
+        dict with keys: 'keypoints_3d' always; 'vertices' and/or 'joints' when requested;
+        'keypoints_visibility', 'joints_visibility', 'vertices_visibility' when camera
+        params are provided.
     """
     from sam3d_body_eqx.inference import SAM3DBodyEstimator
 
@@ -564,6 +577,10 @@ def compute_sam3d_geometry(
         scale_params=scale_params,
         hand_pose_params=hand_pose_params,
         global_rot=global_rot,
+        camera_t=camera_t,
+        focal_length=focal_length,
+        image_size=image_size,
+        depth_tolerance=depth_tolerance,
         return_vertices=return_vertices,
         return_joints=return_joints,
     )
