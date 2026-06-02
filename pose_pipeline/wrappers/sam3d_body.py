@@ -361,10 +361,9 @@ def process_sam3d_pytorch(
     
     num_frames = len(bboxes)
     results = {
-        "vertices": [], "keypoints_3d": [], "keypoints_2d": [],
         "camera_t": [], "focal_length": [], "body_pose_params": [],
-        "hand_pose_params": [], "shape_params": [], "global_rot": [],
-        "joints": []
+        "hand_pose_params": [], "shape_params": [], "scale_params": [],
+        "global_rot": [],
     }
     
     cap = cv2.VideoCapture(video_path)
@@ -395,16 +394,13 @@ def process_sam3d_pytorch(
                 
             p = outputs[0]
             # Store outputs (already NumPy arrays)
-            results["vertices"].append(p.get("pred_vertices"))
-            results["keypoints_3d"].append(p.get("pred_keypoints_3d"))
-            results["keypoints_2d"].append(p.get("pred_keypoints_2d"))
             results["camera_t"].append(p.get("pred_cam_t"))
             results["focal_length"].append(float(p.get("focal_length", 0.0)))
             results["body_pose_params"].append(p.get("body_pose_params"))
             results["hand_pose_params"].append(p.get("hand_pose_params"))
             results["shape_params"].append(p.get("shape_params"))
+            results["scale_params"].append(p.get("scale_params", p.get("scale")))
             results["global_rot"].append(p.get("global_rot"))
-            results["joints"].append(p.get("pred_joint_coords"))
     finally:
         cap.release()
         
@@ -418,7 +414,6 @@ def process_sam3d_pytorch(
         return out
 
     final = {k: stack(v) for k, v in results.items()}
-    final["mesh_faces"] = estimator.faces
     return final
 
 def process_sam3d_jax(
@@ -471,23 +466,19 @@ def process_sam3d_jax(
         if res is not None:
             # Map JAX-specific output keys to the standardized PosePipeline API
             results_list.append({
-                "vertices": np.asarray(res["pred_vertices"]) if res.get("pred_vertices") is not None else None,
-                "keypoints_3d": np.asarray(res["pred_keypoints_3d"]),
-                "keypoints_2d": np.asarray(res["pred_keypoints_2d"]) if res.get("pred_keypoints_2d") is not None else None,
                 "camera_t": np.asarray(res["pred_cam_t"]) if res.get("pred_cam_t") is not None else None,
                 "focal_length": float(res["focal_length"]) if res.get("focal_length") is not None else None,
                 "body_pose_params": np.asarray(res["body_pose"]),
                 "hand_pose_params": np.asarray(res["hand"]),
                 "shape_params": np.asarray(res["shape"]),
+                "scale_params": np.asarray(res["scale"]),
                 "global_rot": np.asarray(res["global_rot"]),
-                "joints": np.asarray(res["pred_joint_coords"]) if res.get("pred_joint_coords") is not None else None,
             })
         else:
             results_list.append(None)
 
     # Consolidate frames using the JAX-helper stack utility
     final = stack_sequence_results(results_list)
-    final["mesh_faces"] = np.asarray(estimator.model.head_pose.mhr.faces)
     return final
 
 def process_sam3d_body(
@@ -536,6 +527,65 @@ def process_sam3d_body(
 
     return results
 
+
+def compute_sam3d_geometry(
+    body_pose_params: np.ndarray,
+    shape_params: np.ndarray,
+    scale_params: np.ndarray,
+    hand_pose_params: np.ndarray,
+    global_rot: np.ndarray,
+    camera_t: Optional[np.ndarray] = None,
+    focal_length: Optional[np.ndarray] = None,
+    image_size: Optional[Tuple[int, int]] = None,
+    depth_tolerance: float = 0.05,
+    return_vertices: bool = True,
+    return_joints: bool = True,
+) -> Dict[str, np.ndarray]:
+    """Reconstruct MHR mesh vertices and kinematic joints from stored minimal parameters.
+
+    Delegates to SAM3DBodyEstimator.compute_geometry() (requires sam3d_body_eqx).
+    Vertices/joints are returned in body/root space. Apply camera_t separately for
+    2D projection.
+
+    When camera_t, focal_length, and image_size are provided, self-occlusion
+    visibility masks are also returned (requires pyrender + trimesh).
+
+    Args:
+        body_pose_params:  (N, 133) body pose Euler angles (XYZ).
+        shape_params:      (N, 45) shape PCA coefficients.
+        scale_params:      (N, 28) scale PCA coefficients.
+        hand_pose_params:  (N, 108) hand pose: columns 0:54 left, 54:108 right (continuous).
+        global_rot:        (N, 3) global rotation (ZYX Euler).
+        camera_t:          (N, 3) camera translations — required for visibility.
+        focal_length:      (N,) focal lengths in pixels — required for visibility.
+        image_size:        (H, W) image dimensions — required for visibility.
+        depth_tolerance:   Occlusion tolerance in metres (default 5 cm).
+        return_vertices:   Whether to include mesh vertices (N, 18439, 3) in output.
+        return_joints:     Whether to include kinematic tree joints (N, 127, 3) in output.
+
+    Returns:
+        dict with keys: 'keypoints_3d' always; 'vertices' and/or 'joints' when requested;
+        'keypoints_visibility', 'joints_visibility', 'vertices_visibility' when camera
+        params are provided.
+    """
+    from sam3d_body_eqx.inference import SAM3DBodyEstimator
+
+    estimator = SAM3DBodyEstimator.from_pretrained()
+    return estimator.compute_geometry(
+        body_pose_params=body_pose_params,
+        shape_params=shape_params,
+        scale_params=scale_params,
+        hand_pose_params=hand_pose_params,
+        global_rot=global_rot,
+        camera_t=camera_t,
+        focal_length=focal_length,
+        image_size=image_size,
+        depth_tolerance=depth_tolerance,
+        return_vertices=return_vertices,
+        return_joints=return_joints,
+    )
+
+
 def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, float] = (0.65, 0.74, 0.86)):
     """
     Create a visualization callback for rendering SAM3D mesh overlays.
@@ -547,11 +597,17 @@ def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, floa
     Returns:
         A function: overlay(image, frame_index) -> visualized_image.
     """
+    from sam3d_body_eqx.inference import SAM3DBodyEstimator
     from sam3d_body_eqx.visualization.mesh import render_mesh
     from pose_pipeline import SAM3DBody
 
-    data = (SAM3DBody & key).fetch1()
-    vertices, faces, camera_t, focal_length = data["vertices"], data["mesh_faces"], data["camera_t"], data["focal_length"]
+    sam3d_entry = SAM3DBody & key
+    data = sam3d_entry.fetch1("camera_t", "focal_length", "frame_valid")
+    geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=False)
+    vertices = geom["vertices"]
+    estimator = SAM3DBodyEstimator.from_pretrained()
+    faces = np.asarray(estimator.model.head_pose.mhr.faces)
+    camera_t, focal_length = data["camera_t"], data["focal_length"]
     valid = data.get("frame_valid", np.ones(len(vertices), dtype=bool))
 
     def overlay(image, idx):
