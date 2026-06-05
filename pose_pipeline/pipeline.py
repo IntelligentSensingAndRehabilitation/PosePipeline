@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 import cv2
 import tempfile
 import numpy as np
@@ -1313,7 +1314,7 @@ class TopDownPerson(dj.Computed):
         elif method_name == "Sam3dBody_movi87":
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d, project_to_2d_mhr_batched
 
-            mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            mapping = load_mhr_mapping("with_kinematic", str(Path(__file__).parent / "wrappers/mhr/data"))
             sam3d_entry = SAM3DBody & key & "sam3d_method=3"
             geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
             vertices, kinematic_nodes = geom["vertices"], geom["joints"]
@@ -1336,7 +1337,7 @@ class TopDownPerson(dj.Computed):
         elif method_name == "Sam3dBody_ideal":
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d, project_to_2d_mhr_batched
 
-            mapping = load_mhr_mapping("ideal_biomech_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            mapping = load_mhr_mapping("ideal_biomech_sites", str(Path(__file__).parent / "wrappers/mhr/data"))
             sam3d_entry = SAM3DBody & key & "sam3d_method=3"
             geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
             vertices, kinematic_nodes = geom["vertices"], geom["joints"]
@@ -1779,7 +1780,7 @@ class LiftingPerson(dj.Computed):
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
 
-            mapping = load_mhr_mapping("with_kinematic","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            mapping = load_mhr_mapping("with_kinematic", str(Path(__file__).parent / "wrappers/mhr/data"))
             sam3d_entry = SAM3DBody & key & "sam3d_method=3"
             geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
             vertices, kinematic_nodes = geom["vertices"], geom["joints"]
@@ -1797,7 +1798,7 @@ class LiftingPerson(dj.Computed):
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_ideal":
             from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
 
-            mapping = load_mhr_mapping("ideal_biomech_sites","/home/vscode/workspace/packages/PosePipeline/pose_pipeline/wrappers/mhr/data")
+            mapping = load_mhr_mapping("ideal_biomech_sites", str(Path(__file__).parent / "wrappers/mhr/data"))
             sam3d_entry = SAM3DBody & key & "sam3d_method=3"
             geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
             vertices, kinematic_nodes = geom["vertices"], geom["joints"]
