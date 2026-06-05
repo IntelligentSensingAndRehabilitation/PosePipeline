@@ -506,6 +506,7 @@ class TrackingBboxMethodLookup(dj.Lookup):
         {"tracking_method": 8, "tracking_method_name": "MMDet_deepsort"},
         {"tracking_method": 9, "tracking_method_name": "MMDet_qdtrack"},
         {"tracking_method": 10, "tracking_method_name": "MMDet_rtmdet"},
+        {"tracking_method": 11, "tracking_method_name": "SAM3"},
     ]
 
 
@@ -595,6 +596,12 @@ class TrackingBbox(dj.Computed):
             from pose_pipeline.wrappers.trades import trades_bounding_boxes
 
             tracks = trades_bounding_boxes(video)
+            key["tracks"] = tracks
+
+        elif (TrackingBboxMethodLookup & key).fetch1("tracking_method_name") == "SAM3":
+            from pose_pipeline.wrappers.sam3 import sam3_bounding_boxes
+
+            tracks = sam3_bounding_boxes(video)
             key["tracks"] = tracks
 
         else:
