@@ -3,36 +3,63 @@ Unified SAM-3D-Body wrapper for PosePipeline.
 Consolidates JAX and PyTorch backends into a single, dictionary-driven API.
 """
 
+import json
 import os
-import time
-from typing import Optional, Literal, Dict, Tuple, Any
+from functools import lru_cache
+from pathlib import Path
+from typing import Optional, Dict, Tuple, Any
 import cv2
 import numpy as np
 from tqdm import tqdm
-import json
-from pathlib import Path
 
 
-from sam3d_body_eqx.visualization.skeleton import MHR70_KEYPOINT_NAMES
+MHR70_KEYPOINT_NAMES = [
+    "nose", "left_eye", "right_eye", "left_ear", "right_ear",
+    "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
+    "left_hip", "right_hip", "left_knee", "right_knee",
+    "left_ankle", "right_ankle",
+    "left_big_toe", "left_small_toe", "left_heel",
+    "right_big_toe", "right_small_toe", "right_heel",
+    "right_thumb4", "right_thumb3", "right_thumb2", "right_thumb_third_joint",
+    "right_forefinger4", "right_forefinger3", "right_forefinger2", "right_forefinger_third_joint",
+    "right_middle_finger4", "right_middle_finger3", "right_middle_finger2", "right_middle_finger_third_joint",
+    "right_ring_finger4", "right_ring_finger3", "right_ring_finger2", "right_ring_finger_third_joint",
+    "right_pinky_finger4", "right_pinky_finger3", "right_pinky_finger2", "right_pinky_finger_third_joint",
+    "right_wrist",
+    "left_thumb4", "left_thumb3", "left_thumb2", "left_thumb_third_joint",
+    "left_forefinger4", "left_forefinger3", "left_forefinger2", "left_forefinger_third_joint",
+    "left_middle_finger4", "left_middle_finger3", "left_middle_finger2", "left_middle_finger_third_joint",
+    "left_ring_finger4", "left_ring_finger3", "left_ring_finger2", "left_ring_finger_third_joint",
+    "left_pinky_finger4", "left_pinky_finger3", "left_pinky_finger2", "left_pinky_finger_third_joint",
+    "left_wrist",
+    "left_olecranon", "right_olecranon",
+    "left_cubital_fossa", "right_cubital_fossa",
+    "left_acromion", "right_acromion",
+    "neck",
+]
 
 
 def get_joint_names(normalize=True):
-    """Return MHR 70 joint names.
+    """Return MHR 70 joint names. Works for both JAX and PyTorch backends.
 
     Args:
         normalize: If True (default), convert to Title Case (left_hip -> Left Hip)
                    to match normalized_joint_name_dictionary convention used elsewhere.
                    If False, return original naming (lowercase with underscores).
     """
-
     if normalize:
-        names = [name.replace("_", " ").title() for name in MHR70_KEYPOINT_NAMES]
-        return list(names)
+        return [name.replace("_", " ").title() for name in MHR70_KEYPOINT_NAMES]
     else:
         return list(MHR70_KEYPOINT_NAMES)
 
 
-sam_vertex_movi_names = [
+# TODO: investigate name discrepancies vs normalized_joint_name_dictionary["bml_movi_87"]:
+# - Formatting: indices 21,23,52,54 and 71-86 use abbreviated forms (LHeel, LAnkle, etc.)
+#   vs full names (Left Heel, Left Ankle, etc.) in bml_movi_87.
+# - Semantic: index 69 "CHip" vs bml "Pelvis" (likely synonym; central hip = pelvis centre).
+# - Semantic: index 70 "Neck" vs bml "Sternum" — anatomically distinct; needs verification
+#   before these lists can be unified.
+SAM_VERTEX_MOVI_NAMES = [
     "backneck",
     "upperback",
     "clavicle",
@@ -122,7 +149,7 @@ sam_vertex_movi_names = [
     "RFoot",
 ]
 
-sam_kinematic_node_names = ['body_world',
+SAM_KINEMATIC_NODE_NAMES = ['body_world',
  'root',
  'l_upleg',
  'l_lowleg',
@@ -249,6 +276,304 @@ sam_kinematic_node_names = ['body_world',
  'l_eye',
  'l_eye_null',
  'c_head_null']
+
+
+# ---------------------------------------------------------------------------
+# MHR projection / marker utilities (pure NumPy — backend-agnostic)
+# Copied from sam3d_body_eqx.mhr.mhr_utils so these work without the JAX
+# package installed.
+# ---------------------------------------------------------------------------
+
+def project_to_2d_mhr_batched(
+    points_3d: np.ndarray,    # (T, 3)
+    camera_t: np.ndarray,     # (T, 3)
+    focal_length: np.ndarray, # (T,)
+    image_size: tuple,
+) -> np.ndarray:
+    """Project 3D points to 2D using MHR weak-perspective camera model.
+
+    Args:
+        points_3d:      3D keypoint for one keypoint type in MHR camera frame per frame (T, 3).
+        camera_t:       Camera translation (T, 3) per frame
+        focal_length:   Focal length per frame (T,)
+        image_size:     (height, width) of the image.
+
+    Returns:
+        points_2d:      Pixel coordinates (T, 2) in (x, y) / (col, row) order.
+    """
+    h, w = image_size
+
+    points_cam = points_3d + camera_t                          # (T, 3)
+    z = points_cam[:, 2:3] + 1e-8                              # (T, 1)
+    f = focal_length[:, None]                                  # (T, 1)
+
+    points_2d = f * points_cam[:, :2] / z                      # (T, 2)
+    points_2d = points_2d + np.array([w / 2.0, h / 2.0])       # (T, 2)
+
+    return points_2d
+
+
+def load_mhr_mapping(name: str = "final", data_dir=None) -> dict:
+    """Load an MHR keypoint-to-vertex mapping from a JSON file.
+
+    Args:
+        name: Mapping name ('with_kinematic', 'ideal_biomech_sites', etc.).
+        data_dir: Path to the directory containing the mapping JSON files.
+                  If None, defaults to the 'mhr/data' folder next to this file.
+
+    Returns:
+        The mapping dictionary.
+    """
+    if data_dir is None:
+        data_dir = Path(__file__).parent / "mhr" / "data"
+    data_dir = Path(data_dir)
+
+    file_path = data_dir / f"kp_vertex_mapping_{name}.json"
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"MHR mapping file not found: {file_path}")
+
+    with open(file_path, "r") as f:
+        return json.load(f)
+
+
+def extract_markers(
+    mapping: dict,
+    vertices: np.ndarray,
+    keypoints_3d: np.ndarray,
+    kinematic_nodes: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Extract virtual markers from MHR predictions.
+
+    Args:
+        mapping:        MHR mapping dict (from load_mhr_mapping).
+        vertices:       MHR mesh vertices       (T, V, 3)
+        keypoints_3d:   MHR 3D keypoints        (T, K, 3)
+        kinematic_nodes: Optional kinematic tree joint positions (T, 127, 3).
+                         Required only when any marker uses match_type='kinematic_node'.
+
+    Returns:
+        Virtual markers (T, K, 3) in the same frame as the inputs.
+    """
+    markers = []
+    for name, m in mapping.items():
+        if not isinstance(m, dict):
+            continue
+        match_type = m.get("match_type", "joint")
+
+        if match_type == "vertex":
+            markers.append(vertices[..., m["index"], :])            # (T,3)
+
+        elif match_type == "kinematic_node":
+            if kinematic_nodes is None:
+                raise ValueError(
+                    f"Marker '{name}' requires 'kinematic_nodes' but none was provided."
+                )
+            markers.append(kinematic_nodes[..., m["index"], :])     # (T,3)
+
+        elif match_type == "sam3d_kp":
+            markers.append(keypoints_3d[..., m["index"], :])        # (T,3)
+
+        else:
+            raise ValueError(
+                f"Marker '{name}' has unrecognized match_type='{match_type}'. "
+                f"Accepted types are: 'vertex', 'kinematic_node', 'sam3d_kp'."
+            )
+
+    return np.stack(markers, axis=-2)  # (T, K, 3)
+
+
+def extract_markers_2d(
+    mapping: dict,
+    vertices: np.ndarray,
+    keypoints_2d: np.ndarray,
+    camera_t: np.ndarray,
+    focal_length,
+    image_size: tuple,
+    kinematic_nodes: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Extract 2D markers handling both single-frame and batched inputs.
+
+    Args:
+        mapping:        MHR mapping dict (from load_mhr_mapping).
+        vertices:       MHR mesh vertices        (V,3) or (T, V, 3).
+        keypoints_2d:   MHR 2D keypoints         (K, 2) or (T, K, 2).
+        camera_t:       Camera translation        (3,) or (T, 3).
+        focal_length:   Focal length scalar or array (scalar or (T,)).
+        image_size:     (height, width) of the image.
+        kinematic_nodes: Optional kinematic tree joint positions (127, 3) or (T, 127, 3).
+                         Required only when any marker uses match_type='kinematic_node'.
+
+    Returns:
+        markers_2d: (K, 2) or (T, K, 2) matching the input dimensionality.
+    """
+    batched = vertices.ndim == 3
+    if not batched:
+        vertices = vertices[None]           # (1, V, 3)
+        keypoints_2d = keypoints_2d[None]   # (1, K, 2)
+        camera_t = camera_t[None]           # (1, 3)
+        focal_length = np.atleast_1d(focal_length)      # (1,)
+
+    markers = []
+    for name, m in mapping.items():
+        if not isinstance(m, dict):
+            continue
+        match_type = m.get("match_type", "joint")
+
+        if match_type == "vertex":
+            pts_3d = vertices[:, m["index"], :]                    # (T, 3)
+            marker = project_to_2d_mhr_batched(
+                pts_3d, camera_t, focal_length, image_size)        # (T, 2)
+
+        elif match_type == "kinematic_node":
+            if kinematic_nodes is None:
+                raise ValueError(
+                    f"Marker '{name}' uses match_type='kinematic_node' but 'kinematic_nodes' was not provided."
+                )
+            pts_3d = kinematic_nodes[:, m["index"], :]              # (T, 3)
+            marker = project_to_2d_mhr_batched(
+                pts_3d, camera_t, focal_length, image_size)         # (T, 2)
+
+        elif match_type == "sam3d_kp":
+            marker = keypoints_2d[:, m["index"], :]                 # (T, 2)
+
+        else:
+            raise ValueError(
+                f"Marker '{name}' has unrecognized match_type='{match_type}'. "
+                f"Accepted types are: 'vertex', 'kinematic_node', 'sam3d_kp'."
+            )
+
+        markers.append(marker)
+
+    result = np.stack(markers, axis=1)                               # (T, K, 2)
+    return result[0] if not batched else result                      # (K, 2) or (T, K, 2)
+
+
+# ---------------------------------------------------------------------------
+# High-level fetch helpers — accept a DataJoint SAM3DBody restriction and
+# return keypoints-with-confidence arrays ready for pipeline insertion.
+# ---------------------------------------------------------------------------
+
+def _project_all_keypoints_2d(
+    points_3d: np.ndarray,    # (T, K, 3)
+    camera_t: np.ndarray,     # (T, 3)
+    focal_length: np.ndarray, # (T,)
+    image_size: tuple,
+) -> np.ndarray:              # (T, K, 2)
+    """Vectorised pinhole projection for a full keypoint set."""
+    h, w = image_size
+    points_cam = points_3d + camera_t[:, None, :]          # (T, K, 3)
+    z = points_cam[:, :, 2:3] + 1e-8                       # (T, K, 1)
+    f = focal_length[:, None, None]                         # (T, 1, 1)
+    points_2d = f * points_cam[:, :, :2] / z               # (T, K, 2)
+    return points_2d + np.array([w / 2.0, h / 2.0])        # (T, K, 2)
+
+
+def _with_nan_confidence(points: np.ndarray) -> np.ndarray:
+    """Append a NaN-based confidence channel (1.0 = all coords finite)."""
+    conf = (~np.isnan(points).any(axis=-1, keepdims=True)).astype(float)
+    return np.concatenate([points, conf], axis=-1)
+
+
+def fetch_sam3d_joints_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
+    """Project MHR 70 keypoints to 2D pixel coordinates.
+
+    Returns:
+        (T, 70, 3) — (x, y, confidence)
+    """
+    geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)
+    camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+    kp2d = _project_all_keypoints_2d(geom["keypoints_3d"], camera_t, focal_length, image_size)
+    return _with_nan_confidence(kp2d)
+
+
+def fetch_sam3d_movi87_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
+    """Project MoVi-87 virtual markers to 2D pixel coordinates.
+
+    Returns:
+        (T, 87, 3) — (x, y, confidence)
+    """
+    mapping = load_mhr_mapping("with_kinematic")
+    geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+    camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+    kp2d = _project_all_keypoints_2d(geom["keypoints_3d"], camera_t, focal_length, image_size)
+    markers_2d = extract_markers_2d(
+        mapping, geom["vertices"], kp2d, camera_t, focal_length, image_size, geom["joints"]
+    )
+    return _with_nan_confidence(markers_2d)
+
+
+def fetch_sam3d_ideal_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
+    """Project ideal biomechanical site markers to 2D pixel coordinates.
+
+    Returns:
+        (T, N, 3) — (x, y, confidence)
+    """
+    mapping = load_mhr_mapping("ideal_biomech_sites")
+    geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+    camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+    kp2d = _project_all_keypoints_2d(geom["keypoints_3d"], camera_t, focal_length, image_size)
+    markers_2d = extract_markers_2d(
+        mapping, geom["vertices"], kp2d, camera_t, focal_length, image_size, geom["joints"]
+    )
+    return _with_nan_confidence(markers_2d)
+
+
+def fetch_sam3d_kinematic_nodes_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
+    """Project 127 kinematic tree nodes to 2D pixel coordinates.
+
+    Returns:
+        (T, 127, 3) — (x, y, confidence)
+    """
+    geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)
+    camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+    kp2d = _project_all_keypoints_2d(geom["joints"], camera_t, focal_length, image_size)
+    return _with_nan_confidence(kp2d)
+
+
+def fetch_sam3d_joints_3d(sam3d_entry) -> np.ndarray:
+    """Fetch MHR 70 keypoints in mm with NaN-based confidence.
+
+    Returns:
+        (T, 70, 4) — (x, y, z, confidence) in mm
+    """
+    kp3d = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)["keypoints_3d"]
+    return _with_nan_confidence(kp3d * 1000)
+
+
+def fetch_sam3d_movi87_3d(sam3d_entry) -> np.ndarray:
+    """Fetch MoVi-87 virtual markers in mm with NaN-based confidence.
+
+    Returns:
+        (T, 87, 4) — (x, y, z, confidence) in mm
+    """
+    mapping = load_mhr_mapping("with_kinematic")
+    geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+    markers = extract_markers(mapping, geom["vertices"], geom["keypoints_3d"], geom["joints"])
+    return _with_nan_confidence(markers * 1000)
+
+
+def fetch_sam3d_ideal_3d(sam3d_entry) -> np.ndarray:
+    """Fetch ideal biomechanical site markers in mm with NaN-based confidence.
+
+    Returns:
+        (T, N, 4) — (x, y, z, confidence) in mm
+    """
+    mapping = load_mhr_mapping("ideal_biomech_sites")
+    geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+    markers = extract_markers(mapping, geom["vertices"], geom["keypoints_3d"], geom["joints"])
+    return _with_nan_confidence(markers * 1000)
+
+
+def fetch_sam3d_kinematic_nodes_3d(sam3d_entry) -> np.ndarray:
+    """Fetch 127 kinematic tree nodes in mm with NaN-based confidence.
+
+    Returns:
+        (T, 127, 4) — (x, y, z, confidence) in mm
+    """
+    kp3d = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)["joints"]
+    return _with_nan_confidence(kp3d * 1000)
+
 
 def is_jax_available() -> bool:
     """Check if the JAX/Equinox backend package is installed."""
@@ -419,7 +744,11 @@ def process_sam3d_body(
 
     Args:
         key: DataJoint primary key dictionary.
-        method_name: Explicit backend selection: "jax" or "torch_dinov3".
+        method_name: Backend/variant selection:
+            "jax"          — JAX backend, no hand refinement (default).
+            "jax_hands"    — JAX backend, with hand refinement (batch_size=4).
+            "jax_hands2"   — JAX backend, with hand refinement (batch_size=16).
+            "torch_dinov3" — PyTorch backend (facebook/sam-3d-body-dinov3).
 
     Returns:
         Standardized results dictionary ready for DataJoint insertion.
@@ -457,7 +786,130 @@ def process_sam3d_body(
     return results
 
 
-def compute_sam3d_geometry(
+# ---------------------------------------------------------------------------
+# Self-occlusion helpers (pure numpy + pyrender/trimesh, no JAX dependency)
+#
+# Coordinate conventions:
+#   Sam3d camera frame : X=right, Y=down,  Z=forward  (OpenCV)
+#   Pyrender frame     : X=right, Y=up,    Z=back      (OpenGL)
+#   Transform          : negate Y and Z when going Sam3d → Pyrender.
+# ---------------------------------------------------------------------------
+
+def _project_pinhole(
+    pts_3d: np.ndarray,
+    focal_length: float,
+    image_size: Tuple[int, int],
+) -> np.ndarray:
+    """Pinhole projection (no distortion). Returns (K, 2) pixel coords."""
+    H, W = image_size
+    cx, cy = W / 2.0, H / 2.0
+    z = pts_3d[:, 2]
+    safe_z = np.where(z > 0, z, 1e-6)
+    x_px = focal_length * pts_3d[:, 0] / safe_z + cx
+    y_px = focal_length * pts_3d[:, 1] / safe_z + cy
+    return np.stack([x_px, y_px], axis=-1)
+
+
+def _render_depth_buffer(
+    vertices_cam: np.ndarray,
+    faces: np.ndarray,
+    focal_length: float,
+    image_size: Tuple[int, int],
+) -> np.ndarray:
+    """Render mesh depth buffer via pyrender (off-screen). Returns (H, W) float32."""
+    import pyrender
+    import trimesh
+
+    H, W = image_size
+    cx, cy = W / 2.0, H / 2.0
+
+    verts_render = vertices_cam.copy()
+    verts_render[:, 1] *= -1
+    verts_render[:, 2] *= -1
+
+    scene = pyrender.Scene(bg_color=[0.0, 0.0, 0.0, 0.0])
+    mesh = pyrender.Mesh.from_trimesh(trimesh.Trimesh(verts_render, faces.copy()))
+    scene.add(mesh)
+    camera = pyrender.IntrinsicsCamera(
+        fx=focal_length, fy=focal_length,
+        cx=cx, cy=cy,
+        znear=0.01, zfar=20.0,
+    )
+    scene.add(camera, pose=np.eye(4))
+
+    renderer = pyrender.OffscreenRenderer(viewport_width=W, viewport_height=H)
+    try:
+        _, depth = renderer.render(scene)
+    finally:
+        renderer.delete()
+
+    return depth
+
+
+def _compute_point_visibility(
+    pts_3d_cam: np.ndarray,
+    pts_2d: np.ndarray,
+    depth_buffer: np.ndarray,
+    depth_tolerance: float = 0.05,
+) -> np.ndarray:
+    """Vectorized depth test. Returns (K,) bool — True = visible."""
+    H, W = depth_buffer.shape
+    pt_depth = pts_3d_cam[:, 2]
+    px = np.clip(np.round(pts_2d[:, 0]).astype(np.int32), 0, W - 1)
+    py = np.clip(np.round(pts_2d[:, 1]).astype(np.int32), 0, H - 1)
+    in_bounds = (
+        (pts_2d[:, 0] >= 0) & (pts_2d[:, 0] < W) &
+        (pts_2d[:, 1] >= 0) & (pts_2d[:, 1] < H)
+    )
+    buf_depth = depth_buffer[py, px]
+    depth_ok = (buf_depth == 0) | (pt_depth <= buf_depth + depth_tolerance)
+    return in_bounds & depth_ok
+
+
+def _compute_visibility_batch(
+    vertices_cam: np.ndarray,
+    faces: np.ndarray,
+    focal_length: float,
+    image_size: Tuple[int, int],
+    keypoints_3d_cam: np.ndarray,
+    keypoints_2d: np.ndarray,
+    joints_3d_cam: Optional[np.ndarray] = None,
+    joints_2d: Optional[np.ndarray] = None,
+    depth_tolerance: float = 0.05,
+) -> Dict[str, np.ndarray]:
+    """Render depth buffer once, test keypoints/joints/vertices against it.
+
+    Returns dict with 'keypoints_visibility' (Kp,), optionally 'joints_visibility'
+    (Kj,), and 'vertices_visibility' (V,) boolean arrays.
+    """
+    depth_buffer = _render_depth_buffer(vertices_cam, faces, focal_length, image_size)
+    out: Dict[str, np.ndarray] = {}
+    out["keypoints_visibility"] = _compute_point_visibility(
+        keypoints_3d_cam, keypoints_2d, depth_buffer, depth_tolerance
+    )
+    if joints_3d_cam is not None and joints_2d is not None:
+        out["joints_visibility"] = _compute_point_visibility(
+            joints_3d_cam, joints_2d, depth_buffer, depth_tolerance
+        )
+    verts_2d = _project_pinhole(vertices_cam, focal_length, image_size)
+    out["vertices_visibility"] = _compute_point_visibility(
+        vertices_cam, verts_2d, depth_buffer, depth_tolerance
+    )
+    return out
+
+
+@lru_cache(maxsize=2)
+def _load_sam3d_torch_model(repo_id: str = "facebook/sam-3d-body-dinov3", device: str = "cuda"):
+    """Load (and cache) just the SAM3D-Body torch model, for geometry reconstruction/rendering."""
+    from sam_3d_body import load_sam_3d_body
+    from sam_3d_body.build_models import _hf_download
+
+    ckpt_path, mhr_path = _hf_download(repo_id)
+    model, _ = load_sam_3d_body(checkpoint_path=ckpt_path, mhr_path=mhr_path, device=device)
+    return model
+
+
+def compute_sam3d_geometry_jax(
     body_pose_params: np.ndarray,
     shape_params: np.ndarray,
     scale_params: np.ndarray,
@@ -470,7 +922,7 @@ def compute_sam3d_geometry(
     return_vertices: bool = True,
     return_joints: bool = True,
 ) -> Dict[str, np.ndarray]:
-    """Reconstruct MHR mesh vertices and kinematic joints from stored minimal parameters.
+    """Reconstruct MHR mesh vertices and kinematic joints using the JAX/Equinox backend.
 
     Delegates to SAM3DBodyEstimator.compute_geometry() (requires sam3d_body_eqx).
     Vertices/joints are returned in body/root space. Apply camera_t separately for
@@ -478,19 +930,6 @@ def compute_sam3d_geometry(
 
     When camera_t, focal_length, and image_size are provided, self-occlusion
     visibility masks are also returned (requires pyrender + trimesh).
-
-    Args:
-        body_pose_params:  (N, 133) body pose Euler angles (XYZ).
-        shape_params:      (N, 45) shape PCA coefficients.
-        scale_params:      (N, 28) scale PCA coefficients.
-        hand_pose_params:  (N, 108) hand pose: columns 0:54 left, 54:108 right (continuous).
-        global_rot:        (N, 3) global rotation (ZYX Euler).
-        camera_t:          (N, 3) camera translations — required for visibility.
-        focal_length:      (N,) focal lengths in pixels — required for visibility.
-        image_size:        (H, W) image dimensions — required for visibility.
-        depth_tolerance:   Occlusion tolerance in metres (default 5 cm).
-        return_vertices:   Whether to include mesh vertices (N, 18439, 3) in output.
-        return_joints:     Whether to include kinematic tree joints (N, 127, 3) in output.
 
     Returns:
         dict with keys: 'keypoints_3d' always; 'vertices' and/or 'joints' when requested;
@@ -515,9 +954,195 @@ def compute_sam3d_geometry(
     )
 
 
+def compute_sam3d_geometry_torch(
+    body_pose_params: np.ndarray,
+    shape_params: np.ndarray,
+    scale_params: np.ndarray,
+    hand_pose_params: np.ndarray,
+    global_rot: np.ndarray,
+    camera_t: Optional[np.ndarray] = None,
+    focal_length: Optional[np.ndarray] = None,
+    image_size: Optional[Tuple[int, int]] = None,
+    depth_tolerance: float = 0.05,
+    return_vertices: bool = True,
+    return_joints: bool = True,
+    device: str = "cuda",
+    repo_id: str = "facebook/sam-3d-body-dinov3",
+) -> Dict[str, np.ndarray]:
+    """Reconstruct MHR mesh vertices and kinematic joints using the PyTorch backend.
+
+    Runs the stored minimal parameters back through MHRHead.mhr_forward() (decoupled
+    from the image pipeline — requires sam_3d_body). Vertices/joints are returned in
+    body/root space, matching compute_sam3d_geometry_jax's convention; apply camera_t
+    separately for 2D projection.
+
+    When camera_t, focal_length, and image_size are provided, self-occlusion visibility
+    masks are computed via pyrender depth-buffer testing (requires pyrender + trimesh).
+
+    Returns:
+        dict with keys: 'keypoints_3d' (N, 70, 3) always; 'vertices' (N, 18439, 3) and/or
+        'joints' (N, 127, 3) when requested; 'keypoints_visibility' (N, 70),
+        'joints_visibility' (N, 127), and 'vertices_visibility' (N, 18439) bool arrays
+        when camera params are provided.
+    """
+    import torch
+
+    model = _load_sam3d_torch_model(repo_id=repo_id, device=device)
+
+    compute_vis = (
+        camera_t is not None
+        and focal_length is not None
+        and image_size is not None
+    )
+    need_vertices = return_vertices or compute_vis
+
+    n = len(body_pose_params)
+    to_tensor = lambda arr: torch.as_tensor(np.asarray(arr), dtype=torch.float32, device=device)
+
+    with torch.no_grad():
+        verts, keypoints, joints = model.head_pose.mhr_forward(
+            global_trans=torch.zeros((n, 3), dtype=torch.float32, device=device),
+            global_rot=to_tensor(global_rot),
+            body_pose_params=to_tensor(body_pose_params),
+            hand_pose_params=to_tensor(hand_pose_params),
+            scale_params=to_tensor(scale_params),
+            shape_params=to_tensor(shape_params),
+            expr_params=torch.zeros((n, model.head_pose.num_face_comps), dtype=torch.float32, device=device),
+            return_keypoints=True,
+            return_joint_coords=True,
+        )
+
+    vertices_all = verts.cpu().numpy() if need_vertices else None
+    keypoints_3d = keypoints[:, :70].cpu().numpy()
+    joints_all = joints.cpu().numpy()
+
+    result = {"keypoints_3d": keypoints_3d}
+    if return_vertices:
+        result["vertices"] = vertices_all
+    if return_joints:
+        result["joints"] = joints_all
+
+    if compute_vis:
+        camera_t = np.asarray(camera_t)
+        focal_length = np.asarray(focal_length)
+        faces = model.head_pose.faces.cpu().numpy()
+
+        kp_vis = np.zeros((n, keypoints_3d.shape[1]), dtype=bool)
+        jt_vis = np.zeros((n, joints_all.shape[1]), dtype=bool) if return_joints else None
+        vt_vis = np.zeros((n, vertices_all.shape[1]), dtype=bool)
+
+        for i in range(n):
+            if np.any(np.isnan(camera_t[i])) or np.isnan(focal_length[i]):
+                continue
+
+            cam_t_i = camera_t[i]
+            fl_i = float(focal_length[i])
+
+            kp3d_cam = keypoints_3d[i] + cam_t_i
+            verts_cam = vertices_all[i] + cam_t_i
+            j3d_cam = (joints_all[i] + cam_t_i) if return_joints else None
+
+            kp2d = _project_pinhole(kp3d_cam, fl_i, image_size)
+            j2d = _project_pinhole(j3d_cam, fl_i, image_size) if j3d_cam is not None else None
+
+            vis = _compute_visibility_batch(
+                vertices_cam=verts_cam,
+                faces=faces,
+                focal_length=fl_i,
+                image_size=image_size,
+                keypoints_3d_cam=kp3d_cam,
+                keypoints_2d=kp2d,
+                joints_3d_cam=j3d_cam,
+                joints_2d=j2d,
+                depth_tolerance=depth_tolerance,
+            )
+            kp_vis[i] = vis["keypoints_visibility"]
+            if jt_vis is not None:
+                jt_vis[i] = vis["joints_visibility"]
+            vt_vis[i] = vis["vertices_visibility"]
+
+        result["keypoints_visibility"] = kp_vis
+        if jt_vis is not None:
+            result["joints_visibility"] = jt_vis
+        if return_vertices:
+            result["vertices_visibility"] = vt_vis
+
+    return result
+
+
+def compute_sam3d_geometry(
+    body_pose_params: np.ndarray,
+    shape_params: np.ndarray,
+    scale_params: np.ndarray,
+    hand_pose_params: np.ndarray,
+    global_rot: np.ndarray,
+    camera_t: Optional[np.ndarray] = None,
+    focal_length: Optional[np.ndarray] = None,
+    image_size: Optional[Tuple[int, int]] = None,
+    depth_tolerance: float = 0.05,
+    return_vertices: bool = True,
+    return_joints: bool = True,
+    method_name: str = "jax",
+) -> Dict[str, np.ndarray]:
+    """Reconstruct MHR mesh vertices and kinematic joints from stored minimal parameters.
+
+    Dispatches to the JAX/Equinox or PyTorch backend based on `method_name`, mirroring
+    process_sam3d_body's dispatch — so geometry is reconstructed with the same family of
+    model that produced the stored parameters (both decode the same MHR rig/checkpoint,
+    so either backend can in principle reconstruct either's output, but using the native
+    backend avoids requiring both JAX and PyTorch to be installed).
+
+    Vertices/joints are returned in body/root space. Apply camera_t separately for
+    2D projection.
+
+    Args:
+        body_pose_params:  (N, 133) body pose Euler angles (XYZ).
+        shape_params:      (N, 45) shape PCA coefficients.
+        scale_params:      (N, 28) scale PCA coefficients.
+        hand_pose_params:  (N, 108) hand pose: columns 0:54 left, 54:108 right (continuous).
+        global_rot:        (N, 3) global rotation (ZYX Euler).
+        camera_t:          (N, 3) camera translations — used for visibility.
+        focal_length:      (N,) focal lengths in pixels — used for visibility.
+        image_size:        (H, W) image dimensions — used for visibility.
+        depth_tolerance:   Occlusion tolerance in metres (default 5 cm).
+        return_vertices:   Whether to include mesh vertices (N, 18439, 3) in output.
+        return_joints:     Whether to include kinematic tree joints (N, 127, 3) in output.
+        method_name:       Which backend produced (and should reconstruct) the geometry:
+                           "jax"/"jax_hands"/"jax_hands2" -> sam3d_body_eqx, "torch_dinov3" -> sam_3d_body.
+
+    Returns:
+        dict with keys: 'keypoints_3d' always; 'vertices' and/or 'joints' when requested;
+        'keypoints_visibility', 'joints_visibility', 'vertices_visibility' when camera
+        params are provided (both backends).
+    """
+    impl = compute_sam3d_geometry_torch if method_name == "torch_dinov3" else compute_sam3d_geometry_jax
+    return impl(
+        body_pose_params=body_pose_params,
+        shape_params=shape_params,
+        scale_params=scale_params,
+        hand_pose_params=hand_pose_params,
+        global_rot=global_rot,
+        camera_t=camera_t,
+        focal_length=focal_length,
+        image_size=image_size,
+        depth_tolerance=depth_tolerance,
+        return_vertices=return_vertices,
+        return_joints=return_joints,
+    )
+
+
+def _get_sam3d_method_name(sam3d_entry) -> str:
+    from pose_pipeline import SAM3DBodyMethodLookup
+
+    return (SAM3DBodyMethodLookup & sam3d_entry).fetch1("sam3d_method_name")
+
+
 def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, float] = (0.65, 0.74, 0.86)):
     """
     Create a visualization callback for rendering SAM3D mesh overlays.
+
+    Dispatches to the JAX or PyTorch renderer depending on which backend produced the
+    entry, so that e.g. torch_dinov3 results can be visualized without sam3d_body_eqx.
 
     Args:
         key: DataJoint key to fetch results.
@@ -526,33 +1151,54 @@ def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, floa
     Returns:
         A function: overlay(image, frame_index) -> visualized_image.
     """
-    from sam3d_body_eqx.inference import SAM3DBodyEstimator
-    from sam3d_body_eqx.visualization.mesh import render_mesh
     from pose_pipeline import SAM3DBody
 
     sam3d_entry = SAM3DBody & key
-    data = sam3d_entry.fetch1("camera_t", "focal_length", "frame_valid")
+    method_name = _get_sam3d_method_name(sam3d_entry)
+    camera_t, focal_length, frame_valid = sam3d_entry.fetch1("camera_t", "focal_length", "frame_valid")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=False)
     vertices = geom["vertices"]
-    estimator = SAM3DBodyEstimator.from_pretrained()
-    faces = np.asarray(estimator.model.head_pose.mhr.faces)
-    camera_t, focal_length = data["camera_t"], data["focal_length"]
-    valid = data.get("frame_valid", np.ones(len(vertices), dtype=bool))
+    valid = frame_valid if frame_valid is not None else np.ones(len(vertices), dtype=bool)
+
+    if method_name == "torch_dinov3":
+        from sam_3d_body.visualization.renderer import Renderer
+
+        model = _load_sam3d_torch_model()
+        faces = model.head_pose.faces.cpu().numpy()
+        renderer = Renderer(focal_length=1000.0, faces=faces)
+
+        def render(image, verts, cam_t, fl):
+            renderer.focal_length = fl
+            # The Renderer applies a 180° X rotation (Y→-Y, Z→-Z) expecting Y-down body
+            # convention, but MHR outputs Y-up vertices. Pre-negate Y and Z so the
+            # renderer's rotation is a no-op and pyrender sees the original Y-up mesh.
+            verts_in = verts.copy()
+            verts_in[:, 1] *= -1
+            verts_in[:, 2] *= -1
+            out = renderer(verts_in, cam_t, image, mesh_base_color=mesh_color)
+            return (np.clip(out, 0, 255) if out.dtype == np.uint8 else np.clip(out * 255, 0, 255).astype(np.uint8))
+    else:
+        from sam3d_body_eqx.inference import SAM3DBodyEstimator
+        from sam3d_body_eqx.visualization.mesh import render_mesh
+
+        estimator = SAM3DBodyEstimator.from_pretrained()
+        faces = np.asarray(estimator.model.head_pose.mhr.faces)
+
+        def render(image, verts, cam_t, fl):
+            return render_mesh(
+                image=image,
+                vertices=verts,
+                faces=faces,
+                camera_translation=cam_t,
+                focal_length=fl,
+                mesh_color=mesh_color,
+            )
 
     def overlay(image, idx):
         if not valid[idx] or np.any(np.isnan(vertices[idx])):
             return image
 
         fl = focal_length[idx] if not np.isnan(focal_length[idx]) else 1000.0
-
-        rendered = render_mesh(
-            image=image,
-            vertices=vertices[idx],
-            faces=faces,
-            camera_translation=camera_t[idx],
-            focal_length=fl,
-            mesh_color=mesh_color,
-        )
-        return rendered
+        return render(image, vertices[idx], camera_t[idx], fl)
 
     return overlay

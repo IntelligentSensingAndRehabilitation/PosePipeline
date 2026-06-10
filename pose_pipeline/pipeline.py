@@ -1292,90 +1292,24 @@ class TopDownPerson(dj.Computed):
             key["keypoints"] = sapiens_top_down_person(key, variant=variant)
 
         elif method_name == "Sam3dBody_with_hands2":
-            from sam3d_body_eqx.mhr.mhr_utils import project_to_2d_mhr_batched
-
-            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
-            geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)
-            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_joints_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            kp3d = geom["keypoints_3d"]  # (N, K, 3)
-            keypoints2d = np.stack([
-                project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
-                for k in range(kp3d.shape[1])
-            ], axis=1)  # (N, K, 2)
+            key["keypoints"] = fetch_sam3d_joints_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
 
-            # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints2d).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-
-            keypoints2d_with_conf = np.concatenate([keypoints2d, conf], axis=-1)
-            key["keypoints"] = keypoints2d_with_conf
-        
         elif method_name == "Sam3dBody_movi87":
-            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d, project_to_2d_mhr_batched
-
-            mapping = load_mhr_mapping("with_kinematic", str(Path(__file__).parent / "wrappers/mhr/data"))
-            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
-            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
-            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
-            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_movi87_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            kp3d = geom["keypoints_3d"]  # (N, K, 3)
-            keypoints_2d = np.stack([
-                project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
-                for k in range(kp3d.shape[1])
-            ], axis=1)  # (N, K, 2)
-            keypoints_2d_movi = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
-
-            # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_2d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-
-            keypoints_2d_movi_with_conf = np.concatenate([keypoints_2d_movi, conf], axis=-1)
-            key["keypoints"] = keypoints_2d_movi_with_conf
+            key["keypoints"] = fetch_sam3d_movi87_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
 
         elif method_name == "Sam3dBody_ideal":
-            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers_2d, project_to_2d_mhr_batched
-
-            mapping = load_mhr_mapping("ideal_biomech_sites", str(Path(__file__).parent / "wrappers/mhr/data"))
-            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
-            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
-            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
-            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_ideal_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            kp3d = geom["keypoints_3d"]  # (N, K, 3)
-            keypoints_2d = np.stack([
-                project_to_2d_mhr_batched(kp3d[:, k, :], camera_t, focal_length, (height, width))
-                for k in range(kp3d.shape[1])
-            ], axis=1)  # (N, K, 2)
-            keypoints_2d_ideal = extract_markers_2d(mapping, vertices, keypoints_2d, camera_t, focal_length, (height,width), kinematic_nodes)
-
-            # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_2d_ideal).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-
-            keypoints_2d_ideal_with_conf = np.concatenate([keypoints_2d_ideal, conf], axis=-1)
-            key["keypoints"] = keypoints_2d_ideal_with_conf 
+            key["keypoints"] = fetch_sam3d_ideal_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
 
         elif method_name == "Sam3dBody_kinematic_nodes_127":
-            from sam3d_body_eqx.mhr.mhr_utils import project_to_2d_mhr_batched
-
-            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
-            geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)
-            kinematic_nodes = geom["joints"]  # (T, K, 3)
-            camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_kinematic_nodes_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            keypoints_2d_kinematic = np.stack([
-                project_to_2d_mhr_batched(kinematic_nodes[:, k, :], camera_t, focal_length, (height, width))
-                for k in range(kinematic_nodes.shape[1])
-            ], axis=1)  # (T, K, 2)
-
-            # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_2d_kinematic).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-
-            keypoints_2d_kinematic_with_conf = np.concatenate([keypoints_2d_kinematic, conf], axis=-1)
-            key["keypoints"] = keypoints_2d_kinematic_with_conf
+            key["keypoints"] = fetch_sam3d_kinematic_nodes_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
 
         else:
             raise Exception("Method not implemented")
@@ -1432,14 +1366,14 @@ class TopDownPerson(dj.Computed):
             return get_joint_names(normalize=normalize)
 
         elif method == "Sam3dBody_movi87":
-            from .wrappers.sam3d_body import sam_vertex_movi_names
+            from .wrappers.sam3d_body import SAM_VERTEX_MOVI_NAMES
 
-            return sam_vertex_movi_names
+            return SAM_VERTEX_MOVI_NAMES
         
         elif method == "Sam3dBody_kinematic_nodes_127":
-            from .wrappers.sam3d_body import sam_kinematic_node_names
+            from .wrappers.sam3d_body import SAM_KINEMATIC_NODE_NAMES
 
-            return sam_kinematic_node_names
+            return SAM_KINEMATIC_NODE_NAMES
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
@@ -1767,65 +1701,24 @@ class LiftingPerson(dj.Computed):
 
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
-            keypoints_3d = (SAM3DBody & key & "sam3d_method=3").fetch_geometry(return_vertices=False, return_joints=False)["keypoints_3d"]
-            keypoints_3d = keypoints_3d * 1000  # convert to mm for consistency with other methods
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_joints_3d
+            kp = fetch_sam3d_joints_3d(SAM3DBody & key & "sam3d_method=3")
+            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
-            # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_3d).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-
-            keypoints_3d_with_conf = np.concatenate([keypoints_3d, conf], axis=-1)
-            results = {"keypoints_3d": keypoints_3d_with_conf[:, :, :], "keypoints_valid": keypoints_3d_with_conf[:, :, -1] > 0.5}
-        
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
-            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
-
-            mapping = load_mhr_mapping("with_kinematic", str(Path(__file__).parent / "wrappers/mhr/data"))
-            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
-            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
-            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
-            keypoints_3d = geom["keypoints_3d"]
-            keypoints_3d_movi = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
-            keypoints_3d_movi = keypoints_3d_movi * 1000  # convert to mm for consistency with other methods
-
-           # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_3d_movi).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-
-            keypoints_3d_movi_with_conf = np.concatenate([keypoints_3d_movi, conf], axis=-1)
-            results = {"keypoints_3d": keypoints_3d_movi_with_conf[:, :, :], "keypoints_valid": keypoints_3d_movi_with_conf[:, :, -1] > 0.5}
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_movi87_3d
+            kp = fetch_sam3d_movi87_3d(SAM3DBody & key & "sam3d_method=3")
+            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_ideal":
-            from sam3d_body_eqx.mhr.mhr_utils import load_mhr_mapping, extract_markers
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_ideal_3d
+            kp = fetch_sam3d_ideal_3d(SAM3DBody & key & "sam3d_method=3")
+            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
-            mapping = load_mhr_mapping("ideal_biomech_sites", str(Path(__file__).parent / "wrappers/mhr/data"))
-            sam3d_entry = SAM3DBody & key & "sam3d_method=3"
-            geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
-            vertices, kinematic_nodes = geom["vertices"], geom["joints"]
-            keypoints_3d = geom["keypoints_3d"]
-            keypoints_3d_ideal = extract_markers(mapping, vertices, keypoints_3d, kinematic_nodes)
-            keypoints_3d_ideal = keypoints_3d_ideal * 1000  # convert to mm for consistency with other methods
-
-            # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_3d_ideal).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-            
-            keypoints_3d_ideal_with_conf = np.concatenate([keypoints_3d_ideal, conf], axis=-1)
-            results = {"keypoints_3d": keypoints_3d_ideal_with_conf[:, :, :], "keypoints_valid": keypoints_3d_ideal_with_conf[:, :, -1] > 0.5}
-        
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_kinematic_nodes_127":
-
-            geom = (SAM3DBody & key & "sam3d_method=3").fetch_geometry(return_vertices=False, return_joints=True)
-            kinematic_nodes = geom["joints"]
-            keypoints_3d_kinematic = kinematic_nodes
-            keypoints_3d_kinematic = keypoints_3d_kinematic * 1000  # convert to mm for consistency with other methods
-
-           # Check if any coordinate dimension is NaN for each keypoint in each frame
-            has_nan = np.isnan(keypoints_3d_kinematic).any(axis=-1)  # shape: (num_frames, num_keypoints)
-            conf = (~has_nan).astype(float)[:, :, None]  # shape: (num_frames, num_keypoints, 1)
-            
-            keypoints_3d_kinematic_with_conf = np.concatenate([keypoints_3d_kinematic, conf], axis=-1)
-            results = {"keypoints_3d": keypoints_3d_kinematic_with_conf[:, :, :], "keypoints_valid": keypoints_3d_kinematic_with_conf[:, :, -1] > 0.5}
+            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_kinematic_nodes_3d
+            kp = fetch_sam3d_kinematic_nodes_3d(SAM3DBody & key & "sam3d_method=3")
+            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         else:
             raise Exception(f"Method not implemented {key}")
@@ -2721,17 +2614,22 @@ class SAM3DBody(dj.Computed):
     def fetch_geometry(self, return_vertices=True, return_joints=True, return_visibility=False, depth_tolerance=0.05):
         """Reconstruct MHR mesh vertices and/or kinematic joints from stored minimal parameters.
 
-        Requires sam3d_body_eqx to be installed. Vertices are returned in body/root space
-        (same space as the originally stored values); apply camera_t separately for projection.
+        Reconstructs using the same backend (JAX/sam3d_body_eqx or PyTorch/sam_3d_body) that
+        produced the stored parameters, so only that backend needs to be installed. Vertices
+        are returned in body/root space (same space as the originally stored values); apply
+        camera_t separately for projection.
 
         When return_visibility=True, self-occlusion masks are also returned for all requested
-        outputs. Image size is fetched automatically from VideoInfo. Requires pyrender + trimesh.
+        outputs (both JAX and PyTorch backends). Image size is fetched automatically from
+        VideoInfo. Requires pyrender + trimesh.
         """
         from .wrappers.sam3d_body import compute_sam3d_geometry
+
+        method_name = (SAM3DBodyMethodLookup & self).fetch1("sam3d_method_name")
         fields = ["body_pose_params", "hand_pose_params", "shape_params", "scale_params", "global_rot"]
         if return_visibility:
             fields += ["camera_t", "focal_length"]
-        params = self.fetch1(*fields)
+        params = dict(zip(fields, self.fetch1(*fields)))
 
         camera_t = params["camera_t"] if return_visibility else None
         focal_length = params["focal_length"] if return_visibility else None
@@ -2752,6 +2650,7 @@ class SAM3DBody(dj.Computed):
             depth_tolerance=depth_tolerance,
             return_vertices=return_vertices,
             return_joints=return_joints,
+            method_name=method_name,
         )
 
 
