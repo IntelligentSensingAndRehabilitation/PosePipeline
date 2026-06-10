@@ -475,12 +475,14 @@ def _with_nan_confidence(points: np.ndarray) -> np.ndarray:
     return np.concatenate([points, conf], axis=-1)
 
 
+
 def fetch_sam3d_joints_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
     """Project MHR 70 keypoints to 2D pixel coordinates.
 
     Returns:
         (T, 70, 3) — (x, y, confidence)
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)
     camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
     kp2d = _project_all_keypoints_2d(geom["keypoints_3d"], camera_t, focal_length, image_size)
@@ -493,6 +495,7 @@ def fetch_sam3d_movi87_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
     Returns:
         (T, 87, 3) — (x, y, confidence)
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     mapping = load_mhr_mapping("with_kinematic")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
     camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
@@ -509,6 +512,7 @@ def fetch_sam3d_ideal_2d(sam3d_entry, image_size: tuple) -> np.ndarray:
     Returns:
         (T, N, 3) — (x, y, confidence)
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     mapping = load_mhr_mapping("ideal_biomech_sites")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
     camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
@@ -525,6 +529,7 @@ def fetch_sam3d_kinematic_nodes_2d(sam3d_entry, image_size: tuple) -> np.ndarray
     Returns:
         (T, 127, 3) — (x, y, confidence)
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     geom = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)
     camera_t, focal_length = sam3d_entry.fetch1("camera_t", "focal_length")
     kp2d = _project_all_keypoints_2d(geom["joints"], camera_t, focal_length, image_size)
@@ -537,6 +542,7 @@ def fetch_sam3d_joints_3d(sam3d_entry) -> np.ndarray:
     Returns:
         (T, 70, 4) — (x, y, z, confidence) in mm
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     kp3d = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)["keypoints_3d"]
     return _with_nan_confidence(kp3d * 1000)
 
@@ -547,6 +553,7 @@ def fetch_sam3d_movi87_3d(sam3d_entry) -> np.ndarray:
     Returns:
         (T, 87, 4) — (x, y, z, confidence) in mm
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     mapping = load_mhr_mapping("with_kinematic")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
     markers = extract_markers(mapping, geom["vertices"], geom["keypoints_3d"], geom["joints"])
@@ -559,6 +566,7 @@ def fetch_sam3d_ideal_3d(sam3d_entry) -> np.ndarray:
     Returns:
         (T, N, 4) — (x, y, z, confidence) in mm
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     mapping = load_mhr_mapping("ideal_biomech_sites")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
     markers = extract_markers(mapping, geom["vertices"], geom["keypoints_3d"], geom["joints"])
@@ -571,6 +579,7 @@ def fetch_sam3d_kinematic_nodes_3d(sam3d_entry) -> np.ndarray:
     Returns:
         (T, 127, 4) — (x, y, z, confidence) in mm
     """
+    assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     kp3d = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)["joints"]
     return _with_nan_confidence(kp3d * 1000)
 
@@ -1067,6 +1076,14 @@ def compute_sam3d_geometry_torch(
         if return_vertices:
             result["vertices_visibility"] = vt_vis
 
+    # Normalize to Y-down convention (matching JAX backend) so all downstream
+    # consumers project correctly without backend-specific handling.
+    for k in ("keypoints_3d", "vertices", "joints"):
+        if result.get(k) is not None:
+            result[k] = result[k].copy()
+            result[k][..., 1] *= -1
+            result[k][..., 2] *= -1
+
     return result
 
 
@@ -1169,13 +1186,7 @@ def get_sam3d_callback(key: Dict[str, Any], mesh_color: Tuple[float, float, floa
 
         def render(image, verts, cam_t, fl):
             renderer.focal_length = fl
-            # The Renderer applies a 180° X rotation (Y→-Y, Z→-Z) expecting Y-down body
-            # convention, but MHR outputs Y-up vertices. Pre-negate Y and Z so the
-            # renderer's rotation is a no-op and pyrender sees the original Y-up mesh.
-            verts_in = verts.copy()
-            verts_in[:, 1] *= -1
-            verts_in[:, 2] *= -1
-            out = renderer(verts_in, cam_t, image, mesh_base_color=mesh_color)
+            out = renderer(verts, cam_t, image, mesh_base_color=mesh_color)
             return (np.clip(out, 0, 255) if out.dtype == np.uint8 else np.clip(out * 255, 0, 255).astype(np.uint8))
     else:
         from sam3d_body_eqx.inference import SAM3DBodyEstimator

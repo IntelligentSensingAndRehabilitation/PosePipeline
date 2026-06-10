@@ -1294,22 +1294,26 @@ class TopDownPerson(dj.Computed):
         elif method_name == "Sam3dBody_with_hands2":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_joints_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            key["keypoints"] = fetch_sam3d_joints_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
+            # this will fail if multiple SAM methods are populated
+            key["keypoints"] = fetch_sam3d_joints_2d(SAM3DBody & key, (height, width))
 
         elif method_name == "Sam3dBody_movi87":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_movi87_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            key["keypoints"] = fetch_sam3d_movi87_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
+            # this will fail if multiple SAM methods are populated
+            key["keypoints"] = fetch_sam3d_movi87_2d(SAM3DBody & key, (height, width))
 
         elif method_name == "Sam3dBody_ideal":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_ideal_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            key["keypoints"] = fetch_sam3d_ideal_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
+            # this will fail if multiple SAM methods are populated
+            key["keypoints"] = fetch_sam3d_ideal_2d(SAM3DBody & key, (height, width))
 
         elif method_name == "Sam3dBody_kinematic_nodes_127":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_kinematic_nodes_2d
             height, width = (VideoInfo & key).fetch1("height", "width")
-            key["keypoints"] = fetch_sam3d_kinematic_nodes_2d(SAM3DBody & key & "sam3d_method=3", (height, width))
+            # this will fail if multiple SAM methods are populated
+            key["keypoints"] = fetch_sam3d_kinematic_nodes_2d(SAM3DBody & key, (height, width))
 
         else:
             raise Exception("Method not implemented")
