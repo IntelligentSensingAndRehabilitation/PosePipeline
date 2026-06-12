@@ -18,6 +18,7 @@ from .pipeline import SAM3DBodyMethodLookup, SAM3DBodyMethod, SAM3DBody, SAM3DBo
 
 
 from .env import add_path, set_environmental_variables, pytorch_memory_limit, tensorflow_memory_limit
+from .utils import VideoFetcher, cleanup_video_files
 
 if "PIPELINE_3RDPARTY" not in os.environ.keys():
     MODEL_DATA_DIR = os.path.join(os.path.split(__file__)[0], "../3rdparty")

@@ -2,6 +2,10 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
+import pytest
+
+pytestmark = pytest.mark.gpu
+
 # base path is relative to the location of this script
 base_path = os.path.dirname(__file__)
 
