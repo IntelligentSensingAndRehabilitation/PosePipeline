@@ -46,6 +46,9 @@ mmpose_joint_dictionary = {
                     "Right Little Toe", "Left Heel", "Right Heel"],
     'MMPose': ["Nose", "Left Eye", "Right Eye", "Left Ear", "Right Ear", "Left Shoulder",
                    "Right Shoulder", "Left Elbow", "Right Elbow", "Left Wrist", "Right Wrist",
+                   "Left Hip", "Right Hip", "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"],
+    'MMPose_VitPose_H': ["Nose", "Left Eye", "Right Eye", "Left Ear", "Right Ear", "Left Shoulder",
+                   "Right Shoulder", "Left Elbow", "Right Elbow", "Left Wrist", "Right Wrist",
                    "Left Hip", "Right Hip", "Left Knee", "Right Knee", "Left Ankle", "Right Ankle"]
 }
 
