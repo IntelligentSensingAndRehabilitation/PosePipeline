@@ -1310,29 +1310,35 @@ class TopDownPerson(dj.Computed):
             variant = method_name.split("_")[1]
             key["keypoints"] = sapiens_top_down_person(key, variant=variant)
 
-        elif method_name == "Sam3dBody_with_hands2":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_joints_2d
+        elif method_name in ("Sam3dBody_with_hands2", "Sam3dBody_movi87", "Sam3dBody_ideal", "Sam3dBody_kinematic_nodes_127"):
+            from pose_pipeline.wrappers.sam3d_body import (
+                fetch_sam3d_joints_2d, fetch_sam3d_movi87_2d,
+                fetch_sam3d_ideal_2d, fetch_sam3d_kinematic_nodes_2d,)
+            
             height, width = (VideoInfo & key).fetch1("height", "width")
-            # this will fail if multiple SAM methods are populated
-            key["keypoints"] = fetch_sam3d_joints_2d(SAM3DBody & key, (height, width))
-
-        elif method_name == "Sam3dBody_movi87":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_movi87_2d
-            height, width = (VideoInfo & key).fetch1("height", "width")
-            # this will fail if multiple SAM methods are populated
-            key["keypoints"] = fetch_sam3d_movi87_2d(SAM3DBody & key, (height, width))
-
-        elif method_name == "Sam3dBody_ideal":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_ideal_2d
-            height, width = (VideoInfo & key).fetch1("height", "width")
-            # this will fail if multiple SAM methods are populated
-            key["keypoints"] = fetch_sam3d_ideal_2d(SAM3DBody & key, (height, width))
-
-        elif method_name == "Sam3dBody_kinematic_nodes_127":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_kinematic_nodes_2d
-            height, width = (VideoInfo & key).fetch1("height", "width")
-            # this will fail if multiple SAM methods are populated
-            key["keypoints"] = fetch_sam3d_kinematic_nodes_2d(SAM3DBody & key, (height, width))
+            sam3d_entry = SAM3DBody & key
+            _populated = sam3d_entry.fetch("sam3d_method")
+            if len(_populated) == 0:
+                raise RuntimeError(f"No SAM3DBody entry for key {key}. Populate SAM3DBodyMethod + SAM3DBody first.")
+            
+            if len(_populated) > 1:
+                raise RuntimeError(
+                    f"Multiple SAM3DBody entries (sam3d_method={sorted(_populated)}) for key {key}. "
+                    "To pin a specific method, edit pipeline.py and change:\n"
+                    "    sam3d_entry = SAM3DBody & key\n"
+                    "to:\n"
+                    "    sam3d_entry = SAM3DBody & key & 'sam3d_method=N'\n"
+                    "where N is one of the method IDs listed above."
+                )
+            
+            if method_name == "Sam3dBody_with_hands2":
+                key["keypoints"] = fetch_sam3d_joints_2d(sam3d_entry, (height, width))
+            elif method_name == "Sam3dBody_movi87":
+                key["keypoints"] = fetch_sam3d_movi87_2d(sam3d_entry, (height, width))
+            elif method_name == "Sam3dBody_ideal":
+                key["keypoints"] = fetch_sam3d_ideal_2d(sam3d_entry, (height, width))
+            elif method_name == "Sam3dBody_kinematic_nodes_127":
+                key["keypoints"] = fetch_sam3d_kinematic_nodes_2d(sam3d_entry, (height, width))
 
         else:
             raise Exception("Method not implemented")
@@ -1397,6 +1403,11 @@ class TopDownPerson(dj.Computed):
             from .wrappers.sam3d_body import SAM_KINEMATIC_NODE_NAMES
 
             return SAM_KINEMATIC_NODE_NAMES
+
+        elif method == "Sam3dBody_ideal":
+            from .wrappers.sam3d_body import SAM_IDEAL_NAMES
+
+            return SAM_IDEAL_NAMES
 
         elif method == "MMPose_RTMPose_Cocktail14":
             from pose_pipeline.wrappers.mmpose import mmpose_joint_dictionary
@@ -1723,24 +1734,37 @@ class LiftingPerson(dj.Computed):
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
 
 
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_joints_3d
-            kp = fetch_sam3d_joints_3d(SAM3DBody & key & "sam3d_method=3")
-            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
-
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_movi87_3d
-            kp = fetch_sam3d_movi87_3d(SAM3DBody & key & "sam3d_method=3")
-            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
-
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_ideal":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_ideal_3d
-            kp = fetch_sam3d_ideal_3d(SAM3DBody & key & "sam3d_method=3")
-            results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
-
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_kinematic_nodes_127":
-            from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_kinematic_nodes_3d
-            kp = fetch_sam3d_kinematic_nodes_3d(SAM3DBody & key & "sam3d_method=3")
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") in (
+            "Sam3dBody_with_hands2", "Sam3dBody_movi87", "Sam3dBody_ideal", "Sam3dBody_kinematic_nodes_127"
+        ):
+            from pose_pipeline.wrappers.sam3d_body import (
+                fetch_sam3d_joints_3d, fetch_sam3d_movi87_3d,
+                fetch_sam3d_ideal_3d, fetch_sam3d_kinematic_nodes_3d,
+            )
+            lifting_method_name = (LiftingMethodLookup & key).fetch1("lifting_method_name")
+            sam3d_entry = SAM3DBody & key
+            _populated = sam3d_entry.fetch("sam3d_method")
+            if len(_populated) == 0:
+                raise RuntimeError(
+                    f"No SAM3DBody entry for key {key}. Populate SAM3DBodyMethod + SAM3DBody first."
+                )
+            if len(_populated) > 1:
+                raise RuntimeError(
+                    f"Multiple SAM3DBody entries (sam3d_method={sorted(_populated)}) for key {key}. "
+                    "To pin a specific method, edit pipeline.py and change:\n"
+                    "    sam3d_entry = SAM3DBody & key\n"
+                    "to:\n"
+                    "    sam3d_entry = SAM3DBody & key & 'sam3d_method=N'\n"
+                    "where N is one of the method IDs listed above."
+                )
+            if lifting_method_name == "Sam3dBody_with_hands2":
+                kp = fetch_sam3d_joints_3d(sam3d_entry)
+            elif lifting_method_name == "Sam3dBody_movi87":
+                kp = fetch_sam3d_movi87_3d(sam3d_entry)
+            elif lifting_method_name == "Sam3dBody_ideal":
+                kp = fetch_sam3d_ideal_3d(sam3d_entry)
+            elif lifting_method_name == "Sam3dBody_kinematic_nodes_127":
+                kp = fetch_sam3d_kinematic_nodes_3d(sam3d_entry)
             results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         else:
@@ -2695,7 +2719,7 @@ class SAM3DBodyVideo(dj.Computed):
 
         fd, out_file_name = tempfile.mkstemp(suffix=".mp4")
         os.close(fd)
-        video_overlay(video, out_file_name, callback, downsample=1)
+        video_overlay(video, out_file_name, callback, downsample=1,max_frames=100)
         key["output_video"] = out_file_name
 
         self.insert1(key)
