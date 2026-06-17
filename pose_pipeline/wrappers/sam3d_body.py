@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional, Dict, Tuple, Any
 import cv2
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 MHR70_KEYPOINT_NAMES = [
@@ -277,6 +277,28 @@ SAM_KINEMATIC_NODE_NAMES = ['body_world',
  'l_eye_null',
  'c_head_null']
 
+SAM_IDEAL_NAMES = [
+    'r_asis', 'l_asis', 'r_psis', 'l_psis', 'c_sacrum', 'r_hip', 'l_hip', 'sacrum',
+    'l_gtro', 'l_prox_femur_ant', 'l_dist_femur_ant', 'l_femur_lat', 'l_knee',
+    'l_knee_lat', 'l_knee_med', 'l_shin_lat', 'l_shin_prox', 'l_shin_dist',
+    'l_ankle_lat', 'l_ankle', 'l_ankle_med', 'l_heel', 'l_fmt1', 'l_fmt5',
+    'l_midfoot_lat', 'l_big_toe', 'l_2nd_toe', 'l_5th_toe',
+    'r_gtro', 'r_prox_femur_ant', 'r_dist_femur_ant', 'r_femur_lat', 'r_knee',
+    'r_knee_lat', 'r_knee_med', 'r_shin_lat', 'r_shin_prox', 'r_shin_dist',
+    'r_ankle_lat', 'r_ankle', 'r_ankle_med', 'r_heel', 'r_fmt1', 'r_fmt5',
+    'r_midfoot_lat', 'r_big_toe', 'r_2nd_toe', 'r_5th_toe',
+    'sternum_sup', 'sternum_inf', 'umbilicus', 'mid_back', 'low_back', 'L1', 'L5',
+    'r_scapula_sup', 'r_scapula_inf', 'l_scapula_sup', 'l_scapula_inf',
+    'r_rib_6', 'l_rib_6', 'r_rib_10', 'l_rib_10',
+    'back_neck', 'C2', 'C7', 'top_head', 'r_ear', 'l_ear', 'nose', 'chin',
+    'l_eye', 'r_eye', 'head_post',
+    'l_shoulder', 'l_prox_humerus', 'l_dist_humerus', 'l_elbow', 'l_elbow_med',
+    'l_elbow_lat', 'l_ulna', 'l_radius', 'l_wrist_thumbside', 'l_wrist_pinkieside',
+    'l_wrist', 'l_hand', 'l_fin', 'l_thumb',
+    'r_shoulder', 'r_prox_humerus', 'r_dist_humerus', 'r_elbow', 'r_elbow_med',
+    'r_elbow_lat', 'r_ulna', 'r_radius', 'r_wrist_thumbside', 'r_wrist_pinkieside',
+    'r_wrist', 'r_hand', 'r_fin', 'r_thumb',
+]
 
 # ---------------------------------------------------------------------------
 # MHR projection / marker utilities (pure NumPy — backend-agnostic)
@@ -614,13 +636,7 @@ def process_sam3d_pytorch(
     Returns:
         Standardized dictionary containing stacked NumPy arrays for all outputs.
     """
-    from sam_3d_body import SAM3DBodyEstimator, load_sam_3d_body
-    from sam_3d_body.build_models import _hf_download
-    
-    # Download and load model
-    ckpt_path, mhr_path = _hf_download(repo_id)
-    model, model_cfg = load_sam_3d_body(checkpoint_path=ckpt_path, mhr_path=mhr_path, device=device)
-    estimator = SAM3DBodyEstimator(sam_3d_body_model=model, model_cfg=model_cfg)
+    estimator = _load_sam3d_torch_estimator(repo_id=repo_id, device=device)
     
     num_frames = len(bboxes)
     results = {
@@ -916,6 +932,17 @@ def _load_sam3d_torch_model(repo_id: str = "facebook/sam-3d-body-dinov3", device
     ckpt_path, mhr_path = _hf_download(repo_id)
     model, _ = load_sam_3d_body(checkpoint_path=ckpt_path, mhr_path=mhr_path, device=device)
     return model
+
+
+@lru_cache(maxsize=2)
+def _load_sam3d_torch_estimator(repo_id: str = "facebook/sam-3d-body-dinov3", device: str = "cuda"):
+    """Load (and cache) SAM3DBodyEstimator for inference — shared across all populate() calls."""
+    from sam_3d_body import SAM3DBodyEstimator, load_sam_3d_body
+    from sam_3d_body.build_models import _hf_download
+
+    ckpt_path, mhr_path = _hf_download(repo_id)
+    model, model_cfg = load_sam_3d_body(checkpoint_path=ckpt_path, mhr_path=mhr_path, device=device)
+    return SAM3DBodyEstimator(sam_3d_body_model=model, model_cfg=model_cfg)
 
 
 def compute_sam3d_geometry_jax(
