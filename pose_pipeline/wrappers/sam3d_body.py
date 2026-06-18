@@ -695,12 +695,19 @@ def process_sam3d_pytorch(
     final = {k: stack(v) for k, v in results.items()}
     return final
 
+@lru_cache(maxsize=1)
+def _load_sam3d_jax_estimator():
+    """Load (and cache) JAX SAM3DBodyEstimator — shared across all populate() calls."""
+    from sam3d_body_eqx.inference import SAM3DBodyEstimator
+    return SAM3DBodyEstimator.from_pretrained()
+
+
 def process_sam3d_jax(
     video_path: str,
     bboxes: np.ndarray,
     present: np.ndarray,
     use_hands: bool = False,
-    batch_size: int = 4,
+    batch_size: int = 8,
 ) -> Dict[str, np.ndarray]:
     """
     Run SAM3D inference using the JAX/Equinox backend with batched processing.
@@ -710,16 +717,14 @@ def process_sam3d_jax(
         bboxes: (N_frames, 4) array of bounding boxes in [x, y, w, h] format.
         present: (N_frames,) boolean mask indicating if the person is present.
         use_hands: Whether to enable hand refinement pipeline.
-        batch_size: Number of frames to process at once (default 4 for best performance).
+        batch_size: Number of frames to process at once. jax_hands2 overrides to 64.
 
     Returns:
         Standardized dictionary containing stacked NumPy arrays for all outputs.
     """
-    from sam3d_body_eqx.inference import SAM3DBodyEstimator
     from sam3d_body_eqx.inference.utils import stack_sequence_results
 
-    # Load JAX estimator
-    estimator = SAM3DBodyEstimator.from_pretrained()
+    estimator = _load_sam3d_jax_estimator()
 
     # Convert bboxes from [x, y, w, h] to [x1, y1, x2, y2] format
     # The estimator expects XYXY format
@@ -794,7 +799,7 @@ def process_sam3d_body(
     elif method_name == "jax_hands":
         results = process_sam3d_jax(video_path, bboxes, present, use_hands=True)
     elif method_name == "jax_hands2":
-        results = process_sam3d_jax(video_path, bboxes, present, use_hands=True, batch_size=16)
+        results = process_sam3d_jax(video_path, bboxes, present, use_hands=True, batch_size=32)
     elif method_name == "torch_dinov3":
         results = process_sam3d_pytorch(video_path, bboxes, present, repo_id="facebook/sam-3d-body-dinov3")
     else:
