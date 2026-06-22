@@ -2719,7 +2719,7 @@ class SAM3DBodyVideo(dj.Computed):
 
         fd, out_file_name = tempfile.mkstemp(suffix=".mp4")
         os.close(fd)
-        video_overlay(video, out_file_name, callback, downsample=1,max_frames=100)
+        video_overlay(video, out_file_name, callback, downsample=1)
         key["output_video"] = out_file_name
 
         self.insert1(key)
