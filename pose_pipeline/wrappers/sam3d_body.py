@@ -537,51 +537,75 @@ def fetch_sam3d_kinematic_nodes_2d(sam3d_entry, image_size: tuple) -> np.ndarray
 
 
 def fetch_sam3d_joints_3d(sam3d_entry) -> np.ndarray:
-    """Fetch MHR 70 keypoints in mm with NaN-based confidence.
+    """Fetch MHR 70 keypoints in absolute camera frame, mm, with NaN-based confidence.
+
+    fetch_geometry returns positions in root/body space (meters). camera_t (meters) is
+    added here to convert to absolute camera frame so the output matches the convention
+    used by Bridging-based LiftingPerson entries.
 
     Returns:
-        (T, 70, 4) — (x, y, z, confidence) in mm
+        (T, 70, 4) — (x, y, z, confidence) in mm, absolute camera frame
     """
     assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     kp3d = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=False)["keypoints_3d"]
-    return _with_nan_confidence(kp3d * 1000)
+    camera_t = sam3d_entry.fetch1("camera_t")  # (T, 3) meters
+    kp3d_abs = kp3d + camera_t[:, np.newaxis, :]
+    return _with_nan_confidence(kp3d_abs * 1000)
 
 
 def fetch_sam3d_movi87_3d(sam3d_entry) -> np.ndarray:
-    """Fetch MoVi-87 virtual markers in mm with NaN-based confidence.
+    """Fetch MoVi-87 virtual markers in absolute camera frame, mm, with NaN-based confidence.
+
+    fetch_geometry returns positions in root/body space (meters). camera_t (meters) is
+    added here to convert to absolute camera frame so the output matches the convention
+    used by Bridging-based LiftingPerson entries.
 
     Returns:
-        (T, 87, 4) — (x, y, z, confidence) in mm
+        (T, 87, 4) — (x, y, z, confidence) in mm, absolute camera frame
     """
     assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     mapping = load_mhr_mapping("with_kinematic")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+    camera_t = sam3d_entry.fetch1("camera_t")  # (T, 3) meters
     markers = extract_markers(mapping, geom["vertices"], geom["keypoints_3d"], geom["joints"])
-    return _with_nan_confidence(markers * 1000)
+    markers_abs = markers + camera_t[:, np.newaxis, :]
+    return _with_nan_confidence(markers_abs * 1000)
 
 
 def fetch_sam3d_ideal_3d(sam3d_entry) -> np.ndarray:
-    """Fetch ideal biomechanical site markers in mm with NaN-based confidence.
+    """Fetch ideal biomechanical site markers in absolute camera frame, mm, with NaN-based confidence.
+
+    fetch_geometry returns positions in root/body space (meters). camera_t (meters) is
+    added here to convert to absolute camera frame so the output matches the convention
+    used by Bridging-based LiftingPerson entries.
 
     Returns:
-        (T, N, 4) — (x, y, z, confidence) in mm
+        (T, N, 4) — (x, y, z, confidence) in mm, absolute camera frame
     """
     assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     mapping = load_mhr_mapping("ideal_biomech_sites")
     geom = sam3d_entry.fetch_geometry(return_vertices=True, return_joints=True)
+    camera_t = sam3d_entry.fetch1("camera_t")  # (T, 3) meters
     markers = extract_markers(mapping, geom["vertices"], geom["keypoints_3d"], geom["joints"])
-    return _with_nan_confidence(markers * 1000)
+    markers_abs = markers + camera_t[:, np.newaxis, :]
+    return _with_nan_confidence(markers_abs * 1000)
 
 
 def fetch_sam3d_kinematic_nodes_3d(sam3d_entry) -> np.ndarray:
-    """Fetch 127 kinematic tree nodes in mm with NaN-based confidence.
+    """Fetch 127 kinematic tree nodes in absolute camera frame, mm, with NaN-based confidence.
+
+    fetch_geometry returns positions in root/body space (meters). camera_t (meters) is
+    added here to convert to absolute camera frame so the output matches the convention
+    used by Bridging-based LiftingPerson entries.
 
     Returns:
-        (T, 127, 4) — (x, y, z, confidence) in mm
+        (T, 127, 4) — (x, y, z, confidence) in mm, absolute camera frame
     """
     assert len(sam3d_entry) == 1, f"Expected exactly one SAM3DBody entry, got {len(sam3d_entry)}. Only one sam3d_method should be populated per video."
     kp3d = sam3d_entry.fetch_geometry(return_vertices=False, return_joints=True)["joints"]
-    return _with_nan_confidence(kp3d * 1000)
+    camera_t = sam3d_entry.fetch1("camera_t")  # (T, 3) meters
+    kp3d_abs = kp3d + camera_t[:, np.newaxis, :]
+    return _with_nan_confidence(kp3d_abs * 1000)
 
 
 def is_jax_available() -> bool:
