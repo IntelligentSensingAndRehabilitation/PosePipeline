@@ -1725,22 +1725,22 @@ class LiftingPerson(dj.Computed):
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_with_hands2":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_joints_3d
-            kp = fetch_sam3d_joints_3d(SAM3DBody & key & "sam3d_method=3")
+            kp = fetch_sam3d_joints_3d(SAM3DBody & key)
             results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_movi87":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_movi87_3d
-            kp = fetch_sam3d_movi87_3d(SAM3DBody & key & "sam3d_method=3")
+            kp = fetch_sam3d_movi87_3d(SAM3DBody & key)
             results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_ideal":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_ideal_3d
-            kp = fetch_sam3d_ideal_3d(SAM3DBody & key & "sam3d_method=3")
+            kp = fetch_sam3d_ideal_3d(SAM3DBody & key)
             results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Sam3dBody_kinematic_nodes_127":
             from pose_pipeline.wrappers.sam3d_body import fetch_sam3d_kinematic_nodes_3d
-            kp = fetch_sam3d_kinematic_nodes_3d(SAM3DBody & key & "sam3d_method=3")
+            kp = fetch_sam3d_kinematic_nodes_3d(SAM3DBody & key)
             results = {"keypoints_3d": kp, "keypoints_valid": kp[:, :, -1] > 0.5}
 
         else:
