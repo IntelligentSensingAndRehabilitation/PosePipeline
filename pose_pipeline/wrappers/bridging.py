@@ -42,6 +42,10 @@ def make_coco_25(model):
 # TF SavedModel; the PyTorch weights are converted from that TF checkpoint.
 METRABS_PT_MODEL_NAME = "metrabs_eff2l_384px_800k_28ds_pytorch"
 METRABS_PT_URLS = [
+    # Org-mirrored release asset (stable; create via `gh release create` — see README).
+    "https://github.com/IntelligentSensingAndRehabilitation/metrabs/releases/download/"
+    "weights-eff2l-v0.2/metrabs_eff2l_384px_800k_28ds_pytorch.tar.gz",
+    # Upstream mirrors (fallback).
     "https://bit.ly/metrabs_l_pt",
     "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_384px_800k_28ds_pytorch.tar.gz",
 ]

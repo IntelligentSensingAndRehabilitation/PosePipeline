@@ -12,9 +12,6 @@ dependencies = [
     "openmim>=0.3.9",
     "pycocotools>=2.0.8",
     "pyrender>=0.1.45",
-    "tensorflow[and-cuda]>=2.14.0",
-    "tensorflow-hub",
-    "tf-keras>=2.18.0",
     "torch>=2.0.1",
     "torchaudio>=2.0.2",
     "torchvision>=0.15.2"
@@ -28,6 +25,16 @@ opencv-contrib = ["opencv-contrib-python>=4.0.0"]
 build = ["setuptools>70", "pip>22"]
 compile = ["chumpy>0.4"]
 dev = ["pytest","ipython","ipywidgets","ipympl","seaborn"]
+# MeTRAbs "bridging" pose estimation (PyTorch). The isarandi packages are git-only (not on
+# PyPI); metrabs is our fork with the inference fixes. Weights auto-download on first use.
+bridging = [
+    "metrabs-pytorch @ git+https://github.com/IntelligentSensingAndRehabilitation/metrabs@pytorch-inference-fixes",
+    "posepile @ git+https://github.com/isarandi/posepile",
+    "simplepyutils @ git+https://github.com/isarandi/simplepyutils",
+    "cameralib @ git+https://github.com/isarandi/cameralib",
+    "ultralytics",
+    "hydra-core",
+]
 
 [tool.uv]
 no-build-isolation-package = ["chumpy"]
