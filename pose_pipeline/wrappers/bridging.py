@@ -3,6 +3,7 @@ import os
 
 import cv2
 import numpy as np
+import torch
 
 from pose_pipeline import Video
 
@@ -37,39 +38,100 @@ def make_coco_25(model):
     return model
 
 
+# PyTorch MeTRAbs (SRALab-CBM fork of isarandi/metrabs). Same eff2l model as the former
+# TF SavedModel; the PyTorch weights are converted from that TF checkpoint.
+METRABS_PT_MODEL_NAME = "metrabs_eff2l_384px_800k_28ds_pytorch"
+METRABS_PT_URLS = [
+    "https://bit.ly/metrabs_l_pt",
+    "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_384px_800k_28ds_pytorch.tar.gz",
+]
+
+
+def _ensure_metrabs_model(model_dir):
+    """Auto-download + extract the PyTorch MeTRAbs model archive if not already present.
+
+    Mirrors the old TFHub auto-download so users don't need a manual setup step.
+    """
+    if os.path.exists(os.path.join(model_dir, "ckpt.pt")):
+        return
+    import tarfile
+    import tempfile
+    import urllib.request
+
+    parent = os.path.dirname(model_dir)
+    os.makedirs(parent, exist_ok=True)
+    for url in METRABS_PT_URLS:
+        try:
+            print(f"Downloading MeTRAbs (PyTorch) model from {url} ...")
+            with tempfile.NamedTemporaryFile(suffix=".tar.gz") as tmp:
+                urllib.request.urlretrieve(url, tmp.name)
+                with tarfile.open(tmp.name, mode="r:gz") as tar:
+                    tar.extractall(parent)
+            return
+        except Exception as e:  # noqa: BLE001 - try the next mirror
+            print(f"Failed to download from {url}: {e}")
+    raise RuntimeError("Failed to download MeTRAbs PyTorch model from all URLs")
+
+
+def _load_pytorch_metrabs(model_dir):
+    """Build the crop model + multi-person estimator from a downloaded model directory."""
+    import simplepyutils as spu
+
+    import metrabs_pytorch.backbones.efficientnet as effnet_pt
+    import metrabs_pytorch.models.metrabs as metrabs_pt
+    from metrabs_pytorch.multiperson import multiperson_model
+    from metrabs_pytorch.util import get_config
+    from posepile.joint_info import JointInfo
+
+    get_config(os.path.join(model_dir, "config.yaml"))
+    cfg = get_config()
+    ji = np.load(os.path.join(model_dir, "joint_info.npz"))
+    joint_info = JointInfo(ji["joint_names"], ji["joint_edges"])
+    backbone = torch.nn.Sequential(
+        effnet_pt.PreprocLayer(),
+        getattr(effnet_pt, f"efficientnet_v2_{cfg.efficientnet_size}")().features,
+    )
+    crop_model = metrabs_pt.Metrabs(backbone, joint_info)
+    crop_model.eval()
+    crop_model((torch.zeros((1, 3, cfg.proc_side, cfg.proc_side)), torch.eye(3)[np.newaxis]))
+    crop_model.load_state_dict(torch.load(os.path.join(model_dir, "ckpt.pt")))
+    skeleton_infos = spu.load_pickle(os.path.join(model_dir, "skeleton_infos.pkl"))
+    joint_transform = np.load(os.path.join(model_dir, "joint_transform_matrix.npy"))
+    with torch.device("cuda"):
+        model = multiperson_model.Pose3dEstimator(
+            crop_model.cuda(), skeleton_infos, joint_transform
+        ).cuda()
+
+    # Expose skeleton metadata in the same numpy/bytes format the TF SavedModel used, so
+    # make_coco_25 / filter_skeleton / get_joint_names / downstream keep working unchanged.
+    model.per_skeleton_joint_names = {
+        k: np.array([n.encode("utf-8") for n in v["names"]]) for k, v in skeleton_infos.items()
+    }
+    model.per_skeleton_indices = {
+        k: np.array(v["indices"], dtype=np.int64) for k, v in skeleton_infos.items()
+    }
+    model.per_skeleton_joint_edges = {
+        k: np.array(v["edges"], dtype=np.int64) for k, v in skeleton_infos.items()
+    }
+    return model
+
+
 def get_model():
     if get_model.model is None:
-        import tensorflow_hub as hub
+        from pose_pipeline import MODEL_DATA_DIR
 
-        from pose_pipeline import tensorflow_memory_limit
+        # posepile.paths reads DATA_ROOT at import time; inference doesn't use datasets, so an
+        # (empty) directory is enough. Set it before importing any metrabs_pytorch/posepile code.
+        data_root = os.environ.setdefault("DATA_ROOT", os.path.join(MODEL_DATA_DIR, "posepile_data_root"))
+        os.makedirs(data_root, exist_ok=True)
 
-        tensorflow_memory_limit()
+        model_dir = os.path.join(MODEL_DATA_DIR, METRABS_PT_MODEL_NAME)
+        _ensure_metrabs_model(model_dir)
 
-        METRABS_URLS = [
-            "https://bit.ly/metrabs_l",
-            "https://omnomnom.vision.rwth-aachen.de/data/metrabs/metrabs_eff2l_y4_384px_800k_28ds.tar.gz",
-        ]
-
-        print("Loading MeTRAbs Model...")
-        model_cache = os.environ.get("TFHUB_CACHE_DIR")
-        print(f"Model cached in: {model_cache}")
-        for url in METRABS_URLS:
-            try:
-                model = hub.load(url)
-                break
-            except Exception as e:
-                print(f"Failed to load from {url}: {e}")
-        else:
-            raise RuntimeError("Failed to load MeTRAbs model from all URLs")
-        print("MeTRAbs Model Loaded")
-        model.per_skeleton_joint_names = {
-            k: v.numpy() for k, v in model.per_skeleton_joint_names.items()
-        }
-        model.per_skeleton_indices = {
-            k: v.numpy() for k, v in model.per_skeleton_indices.items()
-        }
-
+        print("Loading MeTRAbs (PyTorch) model...")
+        model = _load_pytorch_metrabs(model_dir)
         model = make_coco_25(model)
+        print("MeTRAbs (PyTorch) model loaded")
 
         get_model.model = model
 
@@ -138,6 +200,7 @@ def bridging_formats_bottom_up(key, model=None, skeleton=""):
 
     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    n_joints = model.per_skeleton_indices[skeleton].shape[0]
     boxes = []
     keypoints2d = []
     keypoints3d = []
@@ -147,23 +210,34 @@ def bridging_formats_bottom_up(key, model=None, skeleton=""):
         assert ret and frame is not None
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_t = torch.from_numpy(np.ascontiguousarray(frame.transpose(2, 0, 1))).cuda()
 
-        pred = model.detect_poses(
-            frame,
-            skeleton=skeleton,
-            num_aug=10,
-            average_aug=False,
-            detector_flip_aug=True,
-            detector_threshold=0.1,
-        )
+        try:
+            with torch.inference_mode(), torch.device("cuda"):
+                pred = model.detect_poses(
+                    frame_t,
+                    skeleton=skeleton,
+                    num_aug=10,
+                    average_aug=False,
+                    detector_flip_aug=True,
+                    detector_threshold=0.1,
+                )
+            poses3d_np = pred["poses3d"].cpu().numpy()
+            boxes.append(pred["boxes"].cpu().numpy())
+            keypoints2d.append(np.mean(pred["poses2d"].cpu().numpy(), axis=1))
+            keypoints3d.append(np.mean(poses3d_np, axis=1))
+            keypoint_noises.append(augmentation_noise(poses3d_np))
+            del pred, poses3d_np
+        except RuntimeError as e:
+            # No person detected in this frame -> detector returns no boxes (empty torch.cat).
+            if "non-empty list" not in str(e):
+                raise
+            boxes.append(np.zeros((0, 5)))
+            keypoints2d.append(np.zeros((0, n_joints, 2)))
+            keypoints3d.append(np.zeros((0, n_joints, 3)))
+            keypoint_noises.append(np.zeros((0, n_joints)))
 
-        poses3d_np = pred["poses3d"].numpy()
-        boxes.append(pred["boxes"].numpy())
-        keypoints2d.append(np.mean(pred["poses2d"].numpy(), axis=1))
-        keypoints3d.append(np.mean(poses3d_np, axis=1))
-        keypoint_noises.append(augmentation_noise(poses3d_np))
-
-        del pred, frame, poses3d_np
+        del frame, frame_t
         if frame_idx % 100 == 0:
             gc.collect()
 
@@ -198,7 +272,6 @@ def bridging_formats_with_external_bbox(
     Returns:
         dict with keys: boxes, keypoints2d, keypoints3d, keypoint_noise
     """
-    import tensorflow as tf
     from tqdm import tqdm
 
     if model is None:
@@ -227,18 +300,21 @@ def bridging_formats_with_external_bbox(
             keypoint_noises.append(np.zeros((1, n_joints)))
             continue
 
-        bbox = tf.convert_to_tensor([external_bboxes[frame_idx]], dtype=tf.float32)
-        pred = model.estimate_poses(
-            frame, bbox, skeleton=skeleton, num_aug=10, average_aug=False
-        )
+        bbox_np = np.asarray([external_bboxes[frame_idx]], dtype=np.float32)  # (1, 4)
+        bbox_t = torch.from_numpy(bbox_np).cuda()
+        frame_t = torch.from_numpy(np.ascontiguousarray(frame.transpose(2, 0, 1))).cuda()
+        with torch.inference_mode(), torch.device("cuda"):
+            pred = model.estimate_poses(
+                frame_t, bbox_t, skeleton=skeleton, num_aug=10, average_aug=False
+            )
 
-        poses3d_np = pred["poses3d"].numpy()
-        boxes.append(bbox.numpy())
-        keypoints2d.append(np.mean(pred["poses2d"].numpy(), axis=1))
+        poses3d_np = pred["poses3d"].cpu().numpy()
+        boxes.append(bbox_np)
+        keypoints2d.append(np.mean(pred["poses2d"].cpu().numpy(), axis=1))
         keypoints3d.append(np.mean(poses3d_np, axis=1))
         keypoint_noises.append(augmentation_noise(poses3d_np))
 
-        del pred, frame, poses3d_np
+        del pred, frame, frame_t, poses3d_np
         if frame_idx % 100 == 0:
             gc.collect()
 
