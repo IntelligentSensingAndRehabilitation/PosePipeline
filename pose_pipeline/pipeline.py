@@ -2397,7 +2397,7 @@ class HandBbox(dj.Computed):
         ) == "MoviTopDown":
             from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
 
-            keypoints = (TopDownPerson & key & "top_down_method=12").fetch1("keypoints")
+            keypoints = (TopDownPerson & key & "top_down_method in (12, 41)").fetch1("keypoints")
             num_boxes, bboxes = make_bbox_from_keypoints(
                 keypoints,
                 method="movi",
