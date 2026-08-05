@@ -157,8 +157,6 @@ class BottomUpMethodLookup(dj.Lookup):
 
         # this uses the COCO25 keypoints but in the same order as OpenPose
         {"bottom_up_method_name": "Bridging_OpenPose"},
-        # PyTorch MeTRAbs backend (historical entries above are the TF backend)
-        {"bottom_up_method_name": "Bridging_OpenPose_pt"},
     ]
 
 
@@ -226,7 +224,7 @@ class BottomUpPeople(dj.Computed):
 
             key["keypoints"] = mmpose_bottom_up(key)
 
-        elif key["bottom_up_method_name"] in ("Bridging_OpenPose", "Bridging_OpenPose_pt"):
+        elif key["bottom_up_method_name"] == "Bridging_OpenPose":
             from .wrappers.bridging import filter_skeleton, normalized_joint_name_dictionary, noise_to_conf
             assert BottomUpBridging & key, f"Bridging not computed: {key}"
 
@@ -459,9 +457,7 @@ class BlurredVideo(dj.Computed):
         from pose_pipeline.utils.visualization import video_overlay
 
         video = Video.get_robust_reader(key, return_cap=False)
-        keypoints = (
-            BottomUpPeople & key & 'bottom_up_method_name in ("Bridging_OpenPose", "Bridging_OpenPose_pt")'
-        ).fetch1("keypoints")
+        keypoints = (BottomUpPeople & key & 'bottom_up_method_name="Bridging_OpenPose"').fetch1("keypoints")
 
         def overlay_callback(image, idx):
             image = image.copy()
@@ -1049,16 +1045,6 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 19, "top_down_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"top_down_method": 20, "top_down_method_name": "Bridging_ExtDetector_smpl+head_30"},
         {"top_down_method": 21, "top_down_method_name": "Bridging_ExtDetector_smplx_42"},
-        # PyTorch MeTRAbs backend (…_pt). Same algorithm/weights as the TF methods above;
-        # new processing uses these so historical (TF) entries stay distinct.
-        {"top_down_method": 40, "top_down_method_name": "Bridging_COCO_25_pt"},
-        {"top_down_method": 41, "top_down_method_name": "Bridging_bml_movi_87_pt"},
-        {"top_down_method": 42, "top_down_method_name": "Bridging_smpl+head_30_pt"},
-        {"top_down_method": 43, "top_down_method_name": "Bridging_smplx_42_pt"},
-        {"top_down_method": 44, "top_down_method_name": "Bridging_ExtDetector_COCO_25_pt"},
-        {"top_down_method": 45, "top_down_method_name": "Bridging_ExtDetector_bml_movi_87_pt"},
-        {"top_down_method": 46, "top_down_method_name": "Bridging_ExtDetector_smpl+head_30_pt"},
-        {"top_down_method": 47, "top_down_method_name": "Bridging_ExtDetector_smplx_42_pt"},
         {"top_down_method": 30, "top_down_method_name": "Sapiens_0.3b_Goliath"},
         {"top_down_method": 31, "top_down_method_name": "Sapiens_0.6b_Goliath"},
         {"top_down_method": 32, "top_down_method_name": "Sapiens_1b_Goliath"},
@@ -1101,10 +1087,6 @@ class TopDownPerson(dj.Computed):
         original_key = key.copy()
 
         method_name = (TopDownMethodLookup & key).fetch1("top_down_method_name")
-        # PyTorch bridging variants ("Bridging_..._pt") share the same code path as the historical
-        # TF methods; normalize the suffix for dispatch (the stored entry keeps its own method id).
-        if method_name.startswith("Bridging_") and method_name.endswith("_pt"):
-            method_name = method_name[: -len("_pt")]
         if method_name == "MMPose":
             from .wrappers.mmpose import mmpose_top_down_person
 
@@ -1385,9 +1367,6 @@ class TopDownPerson(dj.Computed):
 
     @staticmethod
     def joint_names(method="MMPose", normalize=True):
-        # PyTorch bridging variants share joint definitions with the historical TF methods.
-        if method.startswith("Bridging_") and method.endswith("_pt"):
-            method = method[: -len("_pt")]
         if method == "OpenPose":
             return OpenPosePerson.joint_names()
         elif method == "Bridging_COCO_25":
@@ -1557,12 +1536,6 @@ class LiftingMethodLookup(dj.Lookup):
         {"lifting_method": 19, "lifting_method_name": "Bridging_ExtDetector_bml_movi_87"},
         {"lifting_method": 20, "lifting_method_name": "Bridging_ExtDetector_smpl+head_30"},
         {"lifting_method": 21, "lifting_method_name": "Bridging_ExtDetector_smplx_42"},
-        # PyTorch MeTRAbs backend (…_pt). Same algorithm/weights as the TF methods above;
-        # new processing uses these so historical (TF) entries stay distinct.
-        {"lifting_method": 40, "lifting_method_name": "Bridging_COCO_25_pt"},
-        {"lifting_method": 41, "lifting_method_name": "Bridging_bml_movi_87_pt"},
-        {"lifting_method": 42, "lifting_method_name": "Bridging_smpl+head_30_pt"},
-        {"lifting_method": 43, "lifting_method_name": "Bridging_smplx_42_pt"},
         {"lifting_method": 34, "lifting_method_name": "Sam3dBody_with_hands2"},
         {"lifting_method": 35, "lifting_method_name": "Sam3dBody_movi87"},
         {"lifting_method": 36, "lifting_method_name": "Sam3dBody_ideal"},
@@ -1612,7 +1585,7 @@ class LiftingPerson(dj.Computed):
 
             results = process_poseaug(key)
 
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") in ("Bridging_COCO_25", "Bridging_COCO_25_pt"):
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_COCO_25":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image
 
@@ -1623,7 +1596,7 @@ class LiftingPerson(dj.Computed):
             keypoints3d = keypoints_filter_clipped_image(key, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :3], "keypoints_valid": keypoints3d[:, :, -1] > 0.5}
 
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") in ("Bridging_bml_movi_87", "Bridging_bml_movi_87_pt"):
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_bml_movi_87":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image,keypoints_filter_clipped_image3d
             from pose_pipeline.utils.keypoint_matching import compute_iou
@@ -1668,7 +1641,7 @@ class LiftingPerson(dj.Computed):
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
 
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") in ("Bridging_smpl+head_30", "Bridging_smpl+head_30_pt"):
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_smpl+head_30":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image,keypoints_filter_clipped_image3d
             from pose_pipeline.utils.keypoint_matching import compute_iou
@@ -1707,7 +1680,7 @@ class LiftingPerson(dj.Computed):
             keypoints3d = keypoints_filter_clipped_image3d(key, keypoints2d, keypoints3d)
             results = {"keypoints_3d": keypoints3d[:, :, :], "keypoints_valid": keypoints3d[:, :, -1] > 0.5} # i am giving myself the keypoint noise here too
 
-        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") in ("Bridging_smplx_42", "Bridging_smplx_42_pt"):
+        elif (LiftingMethodLookup & key).fetch1("lifting_method_name") == "Bridging_smplx_42":
             from pose_pipeline.wrappers.bridging import filter_skeleton
             from pose_pipeline.utils.keypoints import keypoints_filter_clipped_image,keypoints_filter_clipped_image3d
             from pose_pipeline.utils.keypoint_matching import compute_iou
@@ -2397,7 +2370,7 @@ class HandBbox(dj.Computed):
         ) == "MoviTopDown":
             from pose_pipeline.wrappers.hand_bbox import make_bbox_from_keypoints
 
-            keypoints = (TopDownPerson & key & "top_down_method in (12, 41)").fetch1("keypoints")
+            keypoints = (TopDownPerson & key & "top_down_method=12").fetch1("keypoints")
             num_boxes, bboxes = make_bbox_from_keypoints(
                 keypoints,
                 method="movi",

@@ -110,8 +110,8 @@ def top_down_pipeline(
 def lifting_pipeline(
     key,
     tracking_method_name: str = "MMDet_deepsort",
-    top_down_method_name: str = "Bridging_bml_movi_87_pt",
-    lifting_method_name: str = "Bridging_bml_movi_87_pt",
+    top_down_method_name: str = "Bridging_bml_movi_87",
+    lifting_method_name: str = "Bridging_bml_movi_87",
     reserve_jobs: bool = False,
 ):
     """
@@ -238,12 +238,7 @@ def bottomup_to_topdown(
             PersonBbox & key & (TrackingBboxMethodLookup & {"tracking_method_name": tracking_method_name})
         ).fetch1("KEY")
 
-        if bottom_up_method_name in [
-            "Bridging_COCO_25",
-            "Bridging_bml_movi_87",
-            "Bridging_COCO_25_pt",
-            "Bridging_bml_movi_87_pt",
-        ]:
+        if bottom_up_method_name in ["Bridging_COCO_25", "Bridging_bml_movi_87"]:
             from pose_pipeline.pipeline import BottomUpBridging, BottomUpBridgingPerson
 
             BottomUpBridging.populate(key, reserve_jobs=reserve_jobs)
@@ -294,14 +289,7 @@ def bottom_up_pipeline(
     for key in keys:
         key = key.copy()
 
-        if bottom_up_method_name in [
-            "Bridging_COCO_25",
-            "Bridging_bml_movi_87",
-            "Bridging_OpenPose",
-            "Bridging_COCO_25_pt",
-            "Bridging_bml_movi_87_pt",
-            "Bridging_OpenPose_pt",
-        ]:
+        if bottom_up_method_name in ["Bridging_COCO_25", "Bridging_bml_movi_87", "Bridging_OpenPose"]:
             from pose_pipeline.pipeline import BottomUpBridging
 
             print(f"Computing {bottom_up_method_name} for {key}")
@@ -345,7 +333,7 @@ def blur_videos(keys: Union[Dict, List[Dict]], reserve_jobs: bool = False):
         print(key)
 
         VideoInfo.populate(key, reserve_jobs=reserve_jobs)  # required for various downstream tasks
-        bottom_up_pipeline(key, bottom_up_method_name="Bridging_OpenPose_pt", reserve_jobs=reserve_jobs)
+        bottom_up_pipeline(key, bottom_up_method_name="Bridging_OpenPose", reserve_jobs=reserve_jobs)
 
         # handle the case where some of the jobs where reserved
         if len(BottomUpPeople & key) > 0:
