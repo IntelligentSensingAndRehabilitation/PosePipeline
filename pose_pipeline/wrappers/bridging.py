@@ -3,9 +3,12 @@ import os
 
 import cv2
 import numpy as np
-import torch
 
 from pose_pipeline import Video
+
+# torch is imported lazily inside the 3 functions that need it (_load_pytorch_metrabs and the two
+# bridging_formats_* runners), so the pure-numpy helpers (filter_skeleton, noise_to_conf, etc.)
+# can be imported without pulling in torch.
 
 # supported formats are
 # 'smpl_24', 'h36m_17', 'h36m_25', 'mpi_inf_3dhp_17', 'mpi_inf_3dhp_28', 'coco_19', 'sailvos_26', 'gpa_34', 'aspset_17',
@@ -79,6 +82,8 @@ def _ensure_metrabs_model(model_dir):
 
 def _load_pytorch_metrabs(model_dir):
     """Build the crop model + multi-person estimator from a downloaded model directory."""
+    import torch
+
     import simplepyutils as spu
 
     import metrabs_pytorch.backbones.efficientnet as effnet_pt
@@ -194,6 +199,8 @@ def noise_to_conf(x, half_val=200, sharpness=50):
 
 def bridging_formats_bottom_up(key, model=None, skeleton=""):
 
+    import torch
+
     if model is None:
         model = get_model()
 
@@ -276,6 +283,8 @@ def bridging_formats_with_external_bbox(
     Returns:
         dict with keys: boxes, keypoints2d, keypoints3d, keypoint_noise
     """
+    import torch
+
     from tqdm import tqdm
 
     if model is None:
