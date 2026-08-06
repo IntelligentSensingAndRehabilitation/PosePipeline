@@ -4,11 +4,17 @@ Pairs with the `TimestampedSchema` change (pose_pipeline/dj_schema.py), which st
 tables automatically. This migration updates the *existing* database:
 
   - ADD    a `insertion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP` column to every
-           Computed/Imported/Manual table that doesn't have one (Lookups/Parts skipped).
+           Computed/Imported/Manual table that doesn't have one (Lookups/Parts skipped), using
+           ALGORITHM=INSTANT (metadata-only, no table rebuild -- fast even on the largest tables).
            Existing rows get the migration time; new rows get their insert time.
-  - RENAME the 3 legacy timestamp fields to `insertion_time` (preserving the *real* historical
-           timestamps those tables already recorded): Video.import_time,
+  - RENAME the 3 legacy timestamp fields to `insertion_time` via RENAME COLUMN (a pure metadata
+           rename that preserves the *real* historical timestamps): Video.import_time,
            BottomUpPeople.timestamp, SkeletonAction.computed_timestamp.
+
+Locking: ALTERs run one table at a time (one brief metadata lock each), so this does not lock the
+whole DB. Each op is metadata-only/instant; the only stall risk is if a long-running transaction
+holds a lock on the specific table being altered -- prefer a quiet window. A per-table failure is
+reported and the run continues (idempotent: re-run to retry).
 
 Idempotent (safe to re-run). DRY-RUN by default; pass --apply to execute. Requires WRITE creds.
 
@@ -48,7 +54,7 @@ def main():
     ]
     print(f"schema: {db} | {len(tables)} Computed/Imported/Manual tables\n")
 
-    add = rename = skip = 0
+    add = rename = skip = fail = 0
     for t in sorted(tables, key=lambda c: c.__name__):
         names = t.heading.names
         ftn = t.full_table_name
@@ -58,18 +64,27 @@ def main():
             continue
         legacy = RENAMES.get(t.__name__)
         if legacy and legacy in names:
-            sql = f"ALTER TABLE {ftn} CHANGE COLUMN `{legacy}` {COLDEF}"
+            # pure metadata rename: preserves the column's type/default and its real historical values
+            sql = f"ALTER TABLE {ftn} RENAME COLUMN `{legacy}` TO `insertion_time`"
             print(f"  RENAME  {t.__name__:30s} {legacy} -> insertion_time")
             rename += 1
         else:
-            sql = f"ALTER TABLE {ftn} ADD COLUMN {COLDEF}"
+            # ALGORITHM=INSTANT: metadata-only add (no table rebuild); errors loudly if not possible
+            sql = f"ALTER TABLE {ftn} ADD COLUMN {COLDEF}, ALGORITHM=INSTANT"
             print(f"  ADD     {t.__name__:30s}")
             add += 1
         if args.apply:
-            conn.query(sql)
+            try:
+                conn.query(sql)
+            except Exception as e:  # keep going so one table can't halt the run; report at the end
+                print(f"          FAILED ({type(e).__name__}: {str(e)[:100]})")
+                fail += 1
 
-    print(f"\n{add} ADD, {rename} RENAME, {skip} already done.")
-    print("APPLIED ✅" if args.apply else "DRY-RUN — pass --apply to execute.")
+    print(f"\n{add} ADD, {rename} RENAME, {skip} already done" + (f", {fail} FAILED" if fail else "") + ".")
+    if args.apply:
+        print("APPLIED with FAILURES — re-run after investigating." if fail else "APPLIED ✅")
+    else:
+        print("DRY-RUN — pass --apply to execute.")
 
 
 if __name__ == "__main__":
