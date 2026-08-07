@@ -33,7 +33,6 @@ class Video(dj.Manual):
     ---
     video               : attach@localattach    # datajoint managed video file
     start_time          : timestamp(3)          # time of beginning of video, as accurately as known
-    insertion_time = CURRENT_TIMESTAMP : timestamp  # row insertion time (auto)
     """
 
     @staticmethod
@@ -177,7 +176,6 @@ class BottomUpPeople(dj.Computed):
     -> BottomUpMethod
     ---
     keypoints                   : longblob
-    insertion_time = CURRENT_TIMESTAMP : timestamp  # row insertion time (auto)
     """
 
     def make(self, key):
@@ -1451,7 +1449,6 @@ class SkeletonAction(dj.Computed):
     label_map         : longblob
     action_window_len : int
     stride            : int
-    insertion_time = CURRENT_TIMESTAMP : timestamp  # row insertion time (auto)
     """
 
     # Note: this will likely be refactored with a lookup table in the near future
