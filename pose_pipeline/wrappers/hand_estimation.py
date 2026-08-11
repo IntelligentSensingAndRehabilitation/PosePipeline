@@ -6,42 +6,43 @@ from pose_pipeline import Video
 from pose_pipeline.pipeline import HandBbox
 from tqdm import tqdm
 from mim import download
-from typing import Dict, Any, List, Tuple
+from typing import Dict
 
 package = "mmpose"
 
 _model_cache: Dict[str, "object"] = {}
 
+configs = {
+    "RTMPoseHand5": (
+        "rtmpose-m_8xb256-210e_hand5-256x256",
+        "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth",
+    ),
+    "RTMPoseCOCO": (
+        "rtmpose-m_8xb32-210e_coco-wholebody-hand-256x256",
+        "rtmpose-m_simcc-coco-wholebody-hand_pt-aic-coco_210e-256x256-99477206_20230228.pth",
+    ),
+    "freihand": (
+        "td-hm_res50_8xb64-100e_freihand2d-224x224",
+        "res50_freihand_224x224-ff0799bc_20200914.pth",
+    ),
+    "HRNet_dark": (
+        "td-hm_hrnetv2-w18_dark-8xb64-210e_rhd2d-256x256",
+        "hrnetv2_w18_rhd2d_256x256_dark-4df3a347_20210330.pth",
+    ),
+    "HRNet_udp": (
+        "td-hm_hrnetv2-w18_udp-8xb64-210e_onehand10k-256x256",
+        "hrnetv2_w18_onehand10k_256x256_udp-0d1b515d_20210330.pth",
+    ),
+}
+
 def get_model(method: str):
     if method not in _model_cache:
         _model_cache.clear()  # only keep one model loaded on GPU at a time
 
-        from mmpose.apis import inference_topdown, init_model
-        from mmpose.evaluation.functional import nms
+        from mmpose.apis import init_model
         from pose_pipeline import MODEL_DATA_DIR
 
-        configs = {
-            "RTMPoseHand5": (
-                "rtmpose-m_8xb256-210e_hand5-256x256",
-                "rtmpose-m_simcc-hand5_pt-aic-coco_210e-256x256-74fb594_20230320.pth",
-            ),
-            "RTMPoseCOCO": (
-                "rtmpose-m_8xb32-210e_coco-wholebody-hand-256x256",
-                "rtmpose-m_simcc-coco-wholebody-hand_pt-aic-coco_210e-256x256-99477206_20230228.pth",
-            ),
-            "freihand": (
-                "td-hm_res50_8xb64-100e_freihand2d-224x224",
-                "res50_freihand_224x224-ff0799bc_20200914.pth",
-            ),
-            "HRNet_dark": (
-                "td-hm_hrnetv2-w18_dark-8xb64-210e_rhd2d-256x256",
-                "hrnetv2_w18_rhd2d_256x256_dark-4df3a347_20210330.pth",
-            ),
-            "HRNet_udp": (
-                "td-hm_hrnetv2-w18_udp-8xb64-210e_onehand10k-256x256",
-                "hrnetv2_w18_onehand10k_256x256_udp-0d1b515d_20210330.pth",
-            ),
-        }
+
         pose_config_id, pose_checkpoint = configs[method]
         destination = os.path.join(MODEL_DATA_DIR, f"mmpose/{method}/")
         download("mmpose", [pose_config_id], dest_root=destination)
