@@ -8,8 +8,6 @@ from tqdm import tqdm
 from mim import download
 from typing import Dict
 
-package = "mmpose"
-
 _model_cache: Dict[str, "object"] = {}
 
 configs = {
