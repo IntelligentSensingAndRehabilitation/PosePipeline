@@ -12,13 +12,16 @@ import datajoint as dj
 
 from .utils.keypoint_matching import match_keypoints_to_bbox
 from .env import add_path
+from .dj_schema import TimestampedSchema
 
 if "custom" not in dj.config:
     dj.config["custom"] = {}
 
 db_prefix = dj.config["custom"].get("database.prefix", "")
 
-schema = dj.schema(db_prefix + "pose_pipeline")
+# TimestampedSchema auto-adds an `insertion_time` timestamp to every Computed/Imported/Manual
+# table (Lookups/Parts skipped). See pose_pipeline/dj_schema.py.
+schema = TimestampedSchema(db_prefix + "pose_pipeline")
 
 
 @schema
@@ -30,7 +33,6 @@ class Video(dj.Manual):
     ---
     video               : attach@localattach    # datajoint managed video file
     start_time          : timestamp(3)          # time of beginning of video, as accurately as known
-    import_time  = CURRENT_TIMESTAMP : timestamp
     """
 
     @staticmethod
@@ -174,7 +176,6 @@ class BottomUpPeople(dj.Computed):
     -> BottomUpMethod
     ---
     keypoints                   : longblob
-    timestamp=CURRENT_TIMESTAMP : timestamp    # automatic timestamp
     """
 
     def make(self, key):
@@ -1448,7 +1449,6 @@ class SkeletonAction(dj.Computed):
     label_map         : longblob
     action_window_len : int
     stride            : int
-    computed_timestamp=CURRENT_TIMESTAMP : timestamp    # automatic timestamp
     """
 
     # Note: this will likely be refactored with a lookup table in the near future
