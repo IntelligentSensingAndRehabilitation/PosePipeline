@@ -1060,6 +1060,9 @@ class TopDownMethodLookup(dj.Lookup):
         {"top_down_method": 35, "top_down_method_name": "Sam3dBody_movi87"},
         {"top_down_method": 36, "top_down_method_name": "Sam3dBody_ideal"},
         {"top_down_method": 37, "top_down_method_name": "Sam3dBody_kinematic_nodes_127"},
+        {"top_down_method": 38, "top_down_method_name": "Sapiens2_0.4b_Goliath"},
+        {"top_down_method": 39, "top_down_method_name": "Sapiens2_0.8b_Goliath"},
+        {"top_down_method": 40, "top_down_method_name": "Sapiens2_1b_Goliath"},
     ]
 
 
@@ -1312,6 +1315,12 @@ class TopDownPerson(dj.Computed):
             part_key["keypoint_scores"] = scores
             part_key["keypoints_visibile"] = visibility
 
+        elif "Sapiens2" in method_name:
+            from .wrappers.sapiens2 import sapiens2_top_down_person
+
+            variant = method_name.split("_")[1]
+            key["keypoints"] = sapiens2_top_down_person(key, variant=variant)
+
         elif "Sapiens" in method_name:
             from .wrappers.sapiens import sapiens_top_down_person
 
@@ -1385,6 +1394,11 @@ class TopDownPerson(dj.Computed):
             from pose_pipeline.wrappers.bridging import normalized_joint_name_dictionary
 
             return normalized_joint_name_dictionary["bml_movi_87"]
+
+        elif "Sapiens2" in method:
+            from .wrappers.sapiens2 import get_joint_names
+
+            return get_joint_names(normalize=normalize)
 
         elif "Sapiens" in method:
             from .wrappers.sapiens import get_joint_names
