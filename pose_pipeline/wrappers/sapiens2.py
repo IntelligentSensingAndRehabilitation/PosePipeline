@@ -20,19 +20,18 @@ VARIANT_BATCH_SIZES = {"0.4b": 8, "0.8b": 4, "1b": 2}
 
 
 def get_joint_names(normalize=True):
-    """Return Sapiens2 308 joint names.
-
-    Sapiens2 uses the same 308-keypoint Goliath layout as Sapiens v1, so the
-    names are shared with the v1 wrapper.
+    """Return Sapiens Goliath 308 joint names.
 
     Args:
         normalize: If True (default), convert to Title Case (left_hip -> Left Hip)
                    to match normalized_joint_name_dictionary convention used elsewhere.
                    If False, return original Sapiens naming (lowercase with underscores).
     """
-    from pose_pipeline.wrappers.sapiens import get_joint_names as sapiens_joint_names
+    from sapiens2_eqx import GOLIATH_308_KEYPOINT_NAMES
 
-    return sapiens_joint_names(normalize=normalize)
+    if normalize:
+        return [name.replace("_", " ").title() for name in GOLIATH_308_KEYPOINT_NAMES]
+    return list(GOLIATH_308_KEYPOINT_NAMES)
 
 
 # The model is passed as a JIT argument (not captured by closure) so its weights
