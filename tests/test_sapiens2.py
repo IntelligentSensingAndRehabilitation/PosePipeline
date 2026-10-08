@@ -118,20 +118,25 @@ def test_sapiens2_pose_inference(pose_estimator):
 
 
 def test_sapiens2_predict_video(pose_estimator, demo_video):
-    """predict_video returns (N, 308, 3) keypoints with NaN for frames without a person."""
+    """predict_video returns (N, 308, 3) keypoints, all NaN for frames without a tracked person."""
     path, _ = demo_video
     bboxes = np.array([BBOX] * NUM_FRAMES)
+
+    # Frame 2 is marked not present; frame 4 is present but its bbox is NaN (person not tracked)
+    bboxes[4] = np.nan
+    tracked = PRESENT & ~np.isnan(bboxes).any(axis=1)
 
     # batch_size=4 over 5 frames exercises both a full and a padded batch
     keypoints = pose_estimator.predict_video(path, bboxes, PRESENT, batch_size=4)["keypoints"]
 
     assert keypoints.shape == (NUM_FRAMES, 308, 3)
-    assert np.isnan(keypoints[~PRESENT]).all(), "Frames without a person should be all NaN"
-    assert np.isfinite(keypoints[PRESENT]).all(), "Frames with a person should have no NaN"
+    assert np.isnan(keypoints[~tracked]).all(), "Frames without a tracked person should be all NaN"
+    assert np.isfinite(keypoints[tracked]).all(), "Frames with a person should have no NaN"
+    assert (keypoints[tracked, :, 2] > 0).any(axis=1).all(), "Frames with a person should have nonzero scores"
 
     # Keypoints are mapped back to the full frame, so the confident ones should land on the skier
     x, y, w, h = BBOX
-    for frame_kpts in keypoints[PRESENT]:
+    for frame_kpts in keypoints[tracked]:
         confident = frame_kpts[frame_kpts[:, 2] > 0.5, :2]
         assert len(confident) > 0, "Expected confident keypoints on the skier"
         inside = (confident[:, 0] >= x) & (confident[:, 0] <= x + w) & (confident[:, 1] >= y) & (confident[:, 1] <= y + h)
@@ -140,6 +145,17 @@ def test_sapiens2_predict_video(pose_estimator, demo_video):
     # Nose (Goliath index 0) should be on the skier's face, near (370, 80)
     nose = keypoints[0, 0, :2]
     assert np.linalg.norm(nose - np.array([370.0, 80.0])) < 30, f"Nose at {nose}"
+
+
+def test_sapiens2_predict_video_too_few_frames(pose_estimator, demo_video):
+    """More bboxes than video frames should raise rather than silently misalign keypoints."""
+    path, _ = demo_video
+    # All-NaN bboxes skip inference, so this only exercises frame reading
+    bboxes = np.full((NUM_FRAMES + 2, 4), np.nan)
+    present = np.ones(NUM_FRAMES + 2, dtype=bool)
+
+    with pytest.raises(RuntimeError, match="Could not read frame"):
+        pose_estimator.predict_video(path, bboxes, present, batch_size=4)
 
 
 def test_sapiens2_matches_reference_estimator(pose_estimator, demo_video):

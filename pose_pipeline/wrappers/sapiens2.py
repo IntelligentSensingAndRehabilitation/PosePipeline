@@ -80,6 +80,19 @@ class Sapiens2Estimator:
             self.models[task] = model
 
     def predict_video(self, video_path: str, bboxes: np.ndarray, present: np.ndarray, batch_size: int = 4):
+        """Run the configured Sapiens2 tasks on one person track through a video.
+
+        Args:
+            video_path: Path to the video file.
+            bboxes: (N, 4) PosePipeline [x, y, w, h] bboxes, one per frame (NaN where untracked).
+            present: (N,) bool, whether the person is tracked in each frame.
+            batch_size: Number of frames per model call.
+
+        Returns:
+            Dict with ``keypoints`` (N, 308, 3) [x, y, score] in original image coordinates,
+            plus ``segmentation`` (N, H, W), ``pointmap`` and ``normal`` (lists of length N)
+            for the tasks that were requested.
+        """
         from sapiens2_eqx.inference import preprocess_image
         from sapiens2_eqx.inference.pose_estimator import _box_to_center_scale, _get_affine_transform
 
@@ -87,11 +100,8 @@ class Sapiens2Estimator:
 
         cap = cv2.VideoCapture(video_path)
         try:
-            num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-            # Ensure bboxes match video frames
-            if len(bboxes) < num_frames:
-                num_frames = len(bboxes)
+            # One bbox per frame; should match the length of the identified person track
+            num_frames = len(bboxes)
 
             results = {t: [None] * num_frames for t in self.tasks}
 
@@ -102,10 +112,11 @@ class Sapiens2Estimator:
 
                 for j in range(i, min(i + batch_size, num_frames)):
                     ret, frame = cap.read()
-                    if not ret:
-                        break
+                    if not ret or frame is None:
+                        raise RuntimeError(f"Could not read frame {j} of {num_frames} from {video_path}")
 
-                    if not present[j]:
+                    # handle the case where person is not tracked in frame (filled in below)
+                    if not present[j] or np.any(np.isnan(bboxes[j])):
                         continue
 
                     # Sapiens2 expected format [x1, y1, x2, y2]
@@ -179,7 +190,8 @@ class Sapiens2Estimator:
             # Standardize outputs
             final_results = {}
             if "pose" in self.tasks:
-                # Stack into (N, NUM_KEYPOINTS, 3)
+                # Stack into (N, NUM_KEYPOINTS, 3); frames without a tracked person are all NaN,
+                # matching the Sapiens v1 wrapper
                 stacked = np.full((num_frames, NUM_KEYPOINTS, 3), np.nan)
                 for idx, k in enumerate(results["pose"]):
                     if k is not None:
