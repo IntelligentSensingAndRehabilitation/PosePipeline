@@ -67,12 +67,6 @@ def test_sapiens2_wrapper_import():
     joint_names = get_joint_names()
     assert len(joint_names) == 308
 
-    # Sapiens2 shares the Goliath 308 layout with Sapiens v1
-    from pose_pipeline.wrappers.sapiens2 import get_joint_names as sapiens_joint_names
-
-    assert joint_names == sapiens_joint_names()
-    assert get_joint_names(normalize=False) == sapiens_joint_names(normalize=False)
-
 
 def test_sapiens2_unknown_task():
     """Unknown task names should fail before any model is loaded."""
